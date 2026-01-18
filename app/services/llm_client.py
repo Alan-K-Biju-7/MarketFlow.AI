@@ -4,6 +4,8 @@ import re
 from typing import Any, Dict, Optional
 from openai import OpenAI
 
+from dotenv import load_dotenv
+load_dotenv()
 
 class LLMClient:
     """Singleton LLM client for OpenAI API with JSON response handling."""

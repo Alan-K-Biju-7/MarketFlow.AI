@@ -2,6 +2,8 @@ import json
 import os
 from openai import OpenAI
 from app.schemas import BrandProfile
+from dotenv import load_dotenv
+load_dotenv()
 
 # Groq client (OpenAI-compatible)
 client = OpenAI(

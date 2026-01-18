@@ -1,15 +1,20 @@
+import os
+from dotenv import load_dotenv  # ADD THIS IMPORT
 import requests
 from bs4 import BeautifulSoup
-from typing import Optional
-import time
-import os
 from openai import OpenAI
 
-# Groq client for fallback generation
+# LOAD .ENV FILE FIRST! (ADD THIS LINE)
+load_dotenv()
+
+# Now this will work - it will read from .env
 groq_client = OpenAI(
     api_key=os.getenv("GROQ_API_KEY"),
     base_url="https://api.groq.com/openai/v1"
 )
+
+# Rest of your code...
+
 
 def generate_fallback_from_url(url: str) -> str:
     """Use LLM to intelligently guess website content from URL when scraping fails"""

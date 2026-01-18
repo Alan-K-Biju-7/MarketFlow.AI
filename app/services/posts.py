@@ -4,6 +4,8 @@ from typing import List
 from openai import OpenAI
 from app.schemas import BrandProfile, GeneratedPost
 from app.services.analytics import score_post
+from dotenv import load_dotenv
+load_dotenv()
 
 # Groq client (OpenAI-compatible)
 client = OpenAI(
