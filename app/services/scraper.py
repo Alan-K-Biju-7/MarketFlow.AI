@@ -1,10 +1,13 @@
 import os
-from dotenv import load_dotenv  # ADD THIS IMPORT
+from dotenv import load_dotenv
+import time
+from typing import Optional
+from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 
-# LOAD .ENV FILE FIRST! (ADD THIS LINE)
+# Load .env early so environment variables are available
 load_dotenv()
 
 # Now this will work - it will read from .env
@@ -18,11 +21,10 @@ groq_client = OpenAI(
 
 def generate_fallback_from_url(url: str) -> str:
     """Use LLM to intelligently guess website content from URL when scraping fails"""
-    
-    try:
-        domain = url.split('/')[2].replace('www.', '')  # Extract clean domain
-    except:
-        domain = url
+
+    # Robustly extract the domain from the URL
+    parsed = urlparse(url or "")
+    domain = parsed.netloc.replace('www.', '') if parsed.netloc else (url or "the provided URL")
     
     prompt = f"""Based on the domain name '{domain}', generate a brief 2-3 sentence description of what this company/website likely does, their main products/services, and target audience.
 
