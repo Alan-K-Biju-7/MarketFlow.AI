@@ -5,15 +5,16 @@ from typing import Optional
 from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
-from openai import OpenAI
+from groq import Groq
+import re
+from urllib.parse import urljoin
 
 # Load .env early so environment variables are available
 load_dotenv()
 
-# Now this will work - it will read from .env
-groq_client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1"
+# Groq client (SDK handles URL automatically)
+groq_client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 # Rest of your code...
@@ -46,7 +47,7 @@ Be specific and realistic. Output plain text only, no formatting."""
         return f"A business website at {domain} offering products and services to customers."
 
 
-def fetch_website_text(url: str, fallback_text: Optional[str] = None) -> str:
+def fetch_website_text(url: str, fallback_text: Optional[str] = None) -> tuple:
     """
     Fetch and extract text content from a website URL.
     Falls back to fallback_text, then AI-generated fallback if scraping fails.
@@ -129,6 +130,66 @@ def fetch_website_text(url: str, fallback_text: Optional[str] = None) -> str:
             # Combine and clean
             full_text = ' '.join(text_parts)
             full_text = ' '.join(full_text.split())
+
+            # Extract colors found in the page (hex codes and meta theme-color)
+            def extract_colors(soup):
+                found = []
+                # meta theme-color
+                meta = soup.find('meta', attrs={'name': 'theme-color'})
+                if meta and meta.get('content'):
+                    found.append(meta.get('content').strip())
+
+                # inline styles and style tags
+                style_texts = []
+                for tag in soup.find_all(True):
+                    s = tag.get('style')
+                    if s:
+                        style_texts.append(s)
+
+                for st in soup.find_all('style'):
+                    style_texts.append(st.get_text())
+
+                # Search for hex colors like #RRGGBB or RRGGBB
+                hex_re = re.compile(r"#?[0-9A-Fa-f]{6}")
+                for txt in style_texts:
+                    for m in hex_re.findall(txt or ''):
+                        v = m if m.startswith('#') else f"#{m}"
+                        found.append(v)
+
+                # Search attributes and SVG fills
+                for tag in soup.find_all(True):
+                    for attr in ['fill', 'stroke', 'color', 'bgcolor']:
+                        val = tag.get(attr)
+                        if val:
+                            for m in hex_re.findall(val):
+                                v = m if m.startswith('#') else f"#{m}"
+                                found.append(v)
+
+                # Look for linked stylesheets and try to fetch a small sample of them
+                for link in soup.find_all('link', rel=lambda x: x and 'stylesheet' in x):
+                    href = link.get('href')
+                    if href:
+                        try:
+                            css_url = urljoin(url, href)
+                            r = requests.get(css_url, headers={'User-Agent': headers['User-Agent']}, timeout=4)
+                            if r.status_code == 200:
+                                for m in hex_re.findall(r.text):
+                                    v = m if m.startswith('#') else f"#{m}"
+                                    found.append(v)
+                        except Exception:
+                            pass
+
+                # Deduplicate while preserving order
+                seen = set()
+                out = []
+                for c in found:
+                    cc = c.lower()
+                    if cc not in seen:
+                        seen.add(cc)
+                        out.append(c.upper())
+                return out
+
+            detected_colors = extract_colors(soup)
             
             # Limit length
             if len(full_text) > 4000:
@@ -140,7 +201,9 @@ def fetch_website_text(url: str, fallback_text: Optional[str] = None) -> str:
             
             print(f"✓ Successfully scraped {len(full_text)} characters")
             print(f"Preview: {full_text[:150]}...")
-            return full_text
+            print(f"Detected colors: {detected_colors}")
+            # Return both text and detected colors
+            return full_text, detected_colors
             
         except requests.exceptions.Timeout:
             print(f"Timeout on attempt {attempt + 1}")
@@ -162,9 +225,10 @@ def fetch_website_text(url: str, fallback_text: Optional[str] = None) -> str:
     
     if fallback_text:
         print(f"✓ Using user-provided fallback ({len(fallback_text)} chars)")
-        return fallback_text
+        # No detected colors when using user fallback
+        return fallback_text, []
     else:
         # Generate intelligent fallback using AI
         print("🤖 No fallback provided, generating AI-based content...")
         ai_fallback = generate_fallback_from_url(url)
-        return ai_fallback
+        return ai_fallback, []

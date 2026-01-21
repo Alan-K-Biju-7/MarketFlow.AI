@@ -1,86 +1,230 @@
-import urllib.parse
-import re
-from typing import Optional
+"""
+Image Generation using Pexels API (Primary) + Unsplash Fallback
+FREE: 200 requests/hour via Pexels
+Falls back to Unsplash (50/hour) if Pexels unavailable
+Real professional stock photos - instantly
+"""
 
+import requests
+import os
+from typing import Dict, Optional
 
-def generate_post_image(brand_name: str, post_caption: str, platform: str, tone: str, hashtags: list = None) -> Optional[str]:
+class ImageGenerator:
     """
-    Generate BACKGROUND-ONLY marketing image (no text).
-    Text will be overlaid cleanly in the frontend.
+    Professional stock photos from Pexels with Unsplash fallback
     """
     
-    platform_specs = {
-        "Instagram": {"size": "1080x1080", "desc": "square format"},
-        "LinkedIn": {"size": "1200x627", "desc": "wide horizontal"},
-        "X": {"size": "1200x675", "desc": "wide card"}
+    PEXELS_API = "https://api.pexels.com/v1/search"
+    UNSPLASH_API = "https://source.unsplash.com/featured"
+    
+    PLATFORM_SPECS = {
+        "instagram": {
+            "width": 1080,
+            "height": 1080,
+            "orientation": "square",
+            "keywords": ["lifestyle", "cafe", "people", "community", "business"]
+        },
+        "linkedin": {
+            "width": 1200,
+            "height": 627,
+            "orientation": "landscape",
+            "keywords": ["business", "office", "professional", "corporate", "workspace"]
+        },
+        "x": {
+            "width": 1200,
+            "height": 675,
+            "orientation": "landscape",
+            "keywords": ["dynamic", "innovation", "technology", "action", "modern"]
+        }
     }
     
-    tone_styles = {
-        "startup": "futuristic tech gradient with neon accents and geometric shapes",
-        "cafe": "warm cozy coffee shop with natural wood textures and soft lighting",
-        "ngo": "uplifting nature scene with warm hopeful colors",
-        "enterprise": "professional clean corporate blue gradient minimal"
-    }
+    def __init__(self):
+        """Initialize with Pexels API key"""
+        # Use provided demo key or environment variable
+        self.api_key = os.getenv("PEXELS_API_KEY", "563492ad6f91700001000001c3b8975a742f4d6a803f1a9f44b33d8b")
+        print("✅ Image Generation Ready (Pexels 200/hr + Unsplash fallback)")
     
-    style = "modern professional gradient background"
-    for key in tone_styles:
-        if key in tone.lower():
-            style = tone_styles[key]
-            break
+    def generate_via_pexels(
+        self,
+        query: str,
+        platform: str,
+        post_index: int = 0
+    ) -> Optional[str]:
+        """Try to get image from Pexels API"""
+        try:
+            spec = self.PLATFORM_SPECS.get(platform.lower(), self.PLATFORM_SPECS["instagram"])
+            
+            headers = {"Authorization": self.api_key}
+            params = {
+                "query": query,
+                "orientation": spec['orientation'],
+                "size": "large",
+                "per_page": 10
+            }
+            
+            response = requests.get(
+                self.PEXELS_API,
+                headers=headers,
+                params=params,
+                timeout=8
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if data.get('photos'):
+                    # Get photo based on post_index (cycle through results)
+                    photo = data['photos'][post_index % len(data['photos'])]
+                    image_url = photo['src']['large']
+                    
+                    print(f"     ✅ Pexels (by {photo['photographer']})")
+                    return image_url
+            else:
+                print(f"     ⚠️  Pexels {response.status_code}")
+                return None
+        
+        except Exception as e:
+            print(f"     ⚠️  Pexels error: {str(e)[:50]}")
+            return None
     
-    specs = platform_specs.get(platform, platform_specs["Instagram"])
-    width, height = specs["size"].split("x")
+    def generate_via_unsplash(
+        self,
+        query: str,
+        platform: str
+    ) -> str:
+        """Fallback to Unsplash"""
+        spec = self.PLATFORM_SPECS.get(platform.lower(), self.PLATFORM_SPECS["instagram"])
+        image_url = (
+            f"{self.UNSPLASH_API}/{spec['width']}x{spec['height']}"
+            f"?{query}"
+        )
+        print(f"     ✅ Unsplash (fallback)")
+        return image_url
     
-    # SIMPLE PROMPT: Background + Product/Subject ONLY (no text)
-    prompt = (
-        f"{brand_name} marketing background. "
-        f"{style}. "
-        f"Premium product photography. "
-        f"Clean spacious layout. "
-        f"No text, no words, no letters. "
-        f"Photorealistic 8K quality."
+    def build_search_query(self, brand_name: str, keywords: list = None) -> str:
+        """Build relevant search query from brand info"""
+        
+        search_terms = []
+        
+        # Add brand name
+        if brand_name and brand_name != "Brand":
+            search_terms.append(brand_name)
+        
+        # Add keywords
+        if keywords and len(keywords) > 0:
+            filtered = [k for k in keywords if k and k.strip()]
+            search_terms.extend(filtered[:2])
+        
+        # Fallback
+        query = " ".join(search_terms) if search_terms else "business"
+        return query
+    
+    def generate_post_image(
+        self,
+        brand_name: str,
+        post_caption: str,
+        platform: str,
+        keywords: list = None,
+        post_index: int = 0
+    ) -> str:
+        """
+        Generate platform-specific image
+        Tries Pexels first, falls back to Unsplash
+        """
+        
+        platform_lower = platform.lower()
+        if platform_lower not in self.PLATFORM_SPECS:
+            platform_lower = "instagram"
+        
+        spec = self.PLATFORM_SPECS[platform_lower]
+        
+        # Build search query
+        query = self.build_search_query(brand_name, keywords)
+        
+        print(f"  📸 Getting {platform.upper()} image for {brand_name}")
+        print(f"     Search: {query}")
+        print(f"     Size: {spec['width']}x{spec['height']}")
+        
+        # Try Pexels first
+        image_url = self.generate_via_pexels(query, platform_lower, post_index)
+        
+        # Fallback to Unsplash if Pexels fails
+        if not image_url:
+            image_url = self.generate_via_unsplash(query, platform_lower)
+        
+        return image_url
+
+
+# Global singleton
+_generator: Optional[ImageGenerator] = None
+
+def get_generator() -> ImageGenerator:
+    """Get or create singleton instance"""
+    global _generator
+    if _generator is None:
+        _generator = ImageGenerator()
+    return _generator
+
+def generate_post_image(
+    brand_name: str,
+    post_caption: str,
+    platform: str,
+    tone: str = None,
+    hashtags: list = None,
+    **kwargs
+) -> str:
+    """
+    Public API: Generate platform-specific image
+    
+    Uses Pexels (200/hr) with Unsplash (50/hr) fallback
+    Always returns a professional stock photo URL
+    
+    Args:
+        brand_name: str - Brand/company name
+        post_caption: str - Post caption text
+        platform: str - 'Instagram', 'LinkedIn', or 'X'
+        tone: str - Tone (optional, for compatibility)
+        hashtags: list - Hashtags (used as keywords)
+        
+    Returns:
+        str: Image URL ready for display
+    """
+    generator = get_generator()
+    keywords = hashtags or []
+    
+    return generator.generate_post_image(
+        brand_name=brand_name,
+        post_caption=post_caption,
+        platform=platform,
+        keywords=keywords,
+        post_index=0
     )
-    
-    encoded_prompt = urllib.parse.quote(prompt, safe="")
-    
-    image_url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width={width}&height={height}&model=flux&nologo=true&enhance=true"
-        f"&seed={abs(hash(brand_name + platform)) % 9999}"
-    )
-    
-    print(f"✅ {platform} background generated")
-    
-    return image_url
 
 
 def generate_multiple_images(brand_name: str, posts: list) -> dict:
+    """
+    Generate images for multiple posts
+    """
     image_urls = {}
+    generator = get_generator()
     
     for idx, post in enumerate(posts):
         try:
-            if isinstance(post, dict):
-                caption = post.get("caption", "")
-                platform = post.get("platform", "Instagram")
-                tone = post.get("tone", "Professional")
-                hashtags = post.get("hashtags", [])
-            else:
-                caption = post.caption
-                platform = post.platform
-                tone = post.tone
-                hashtags = post.hashtags
+            platform = post.get("platform", "Instagram") if isinstance(post, dict) else getattr(post, "platform", "Instagram")
+            hashtags = post.get("hashtags", []) if isinstance(post, dict) else getattr(post, "hashtags", [])
+            caption = post.get("caption", "") if isinstance(post, dict) else getattr(post, "caption", "")
             
-            image_url = generate_post_image(
+            image_url = generator.generate_post_image(
                 brand_name=brand_name,
                 post_caption=caption,
                 platform=platform,
-                tone=tone,
-                hashtags=hashtags
+                keywords=hashtags,
+                post_index=idx
             )
             image_urls[idx] = image_url
             
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Error generating image for post {idx}: {e}")
             image_urls[idx] = None
     
     return image_urls

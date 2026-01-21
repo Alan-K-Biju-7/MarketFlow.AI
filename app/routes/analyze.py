@@ -12,11 +12,11 @@ async def analyze_website(request: AnalyzeRequest):
     Analyze a website URL and generate brand profile + social media posts WITH IMAGES
     """
     try:
-        # 1. Scrape website
-        website_text = fetch_website_text(request.url, fallback_text=request.fallbackText)
-        
-        # 2. Generate brand profile
-        brand_profile = generate_brand_profile(website_text, request.tonePreset)
+        # 1. Scrape website (also returns detected color hex codes)
+        website_text, detected_colors = fetch_website_text(request.url, fallback_text=request.fallbackText)
+
+        # 2. Generate brand profile, pass detected colors to help the LLM name them
+        brand_profile = generate_brand_profile(website_text, request.tonePreset, detected_colors=detected_colors)
         
         # 3. Generate posts
         posts = generate_posts(brand_profile, request.tonePreset)

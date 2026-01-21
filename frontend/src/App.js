@@ -146,13 +146,6 @@ function App() {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-20">
-        <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-600">
-          <p>Built for hackathon • Powered by Groq + Pollinations AI</p>
-        </div>
-      </footer>
     </div>
   );
 }

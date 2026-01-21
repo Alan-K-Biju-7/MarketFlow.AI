@@ -1,16 +1,15 @@
 import json
 import os
+from groq import Groq
 from typing import List
-from openai import OpenAI
 from app.schemas import BrandProfile, GeneratedPost
 from app.services.analytics import score_post
 from dotenv import load_dotenv
 load_dotenv()
 
-# Groq client (OpenAI-compatible)
-client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1"
+# Groq client (SDK handles URL automatically)
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
 def generate_posts(brand_profile: BrandProfile, tone_preset: str) -> List[GeneratedPost]:

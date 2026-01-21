@@ -1,17 +1,16 @@
 import json
 import os
-from openai import OpenAI
+from groq import Groq
 from app.schemas import BrandProfile
 from dotenv import load_dotenv
 load_dotenv()
 
-# Groq client (OpenAI-compatible)
-client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1"
+# Groq client (SDK handles URL automatically)
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-def generate_brand_profile(website_text: str, tone_preset: str) -> BrandProfile:
+def generate_brand_profile(website_text: str, tone_preset: str, detected_colors: list = None) -> BrandProfile:
     """
     Generate a brand profile from website text using Groq.
     Tone preset can be 'auto' for LLM to detect, or specific preset to enforce.
@@ -24,6 +23,9 @@ def generate_brand_profile(website_text: str, tone_preset: str) -> BrandProfile:
     
     # Normalize tone
     tone_key = (tone_preset or "auto").lower()
+    # Prepare helpful detected colors list for the LLM
+    detected_colors = detected_colors or []
+    detected_colors_sample = ', '.join(detected_colors[:8]) if detected_colors else ''
     
     # Define tone-specific interpretation guidelines
     tone_instructions = {
@@ -72,7 +74,8 @@ Output ONLY valid JSON with exactly these keys:
 - target_audience: array of 3-8 short strings
 - tone: short phrase describing the communication style you detected and applied
 - keywords: array of 5-15 short strings (aligned with detected style)
-- colors: array of 3-6 color names or hex codes if mentioned (e.g. "#123456" or "navy blue")
+- colors: array of 3-6 color objects. Each item MUST be an object with exactly these keys: `name` (human-friendly name, e.g. "Silver") and `hex` (6-digit hex string with `#`, e.g. "#C0C0C0").
+    If you detect colors from the website, map them to friendly names. If a precise name is unknown, use a common color name (e.g. "Navy", "Silver").
 
 Rules:
 - Do NOT return any extra keys, explanations, or comments
@@ -81,11 +84,13 @@ Rules:
 - If colors aren't mentioned, suggest 2-3 colors that fit the brand type"""
         
         user_instruction = f"""Website text:
----
-{website_text[:3000]}
----
+    ---
+    {website_text[:3000]}
+    ---
 
-Analyze this text and extract a BRAND PROFILE. First detect the most appropriate brand style (startup/cafe/NGO/enterprise), then apply that voice throughout. Return ONLY valid JSON."""
+    Detected colors on the site (automatically extracted): {detected_colors_sample}
+
+    Analyze this text and extract a BRAND PROFILE. First detect the most appropriate brand style (startup/cafe/NGO/enterprise), then apply that voice throughout. Return ONLY valid JSON where the `colors` field is an array of objects with `name` and `hex` keys."""
         
     else:
         # Specific tone requested
@@ -111,7 +116,8 @@ Output ONLY valid JSON with exactly these keys:
 - target_audience: array of 3-8 short strings (who they serve, {tone_key} perspective)
 - tone: MUST describe as "{style}"
 - keywords: array of 5-15 short strings ({tone_key}-relevant marketing keywords)
-- colors: array of 3-6 color names or hex codes if mentioned (e.g. "#123456" or "navy blue")
+- colors: array of 3-6 color objects. Each item MUST be an object with exactly these keys: `name` (human-friendly name, e.g. "Silver") and `hex` (6-digit hex string with `#`, e.g. "#C0C0C0").
+    If you detect colors from the website, map them to friendly names. If a precise name is unknown, use a common color name (e.g. "Navy", "Silver").
 
 Rules:
 - Do NOT return any extra keys, explanations, or comments
@@ -121,13 +127,15 @@ Rules:
 - ALWAYS apply {tone_label} perspective to your interpretation"""
         
         user_instruction = f"""Website text:
----
-{website_text[:3000]}
----
+    ---
+    {website_text[:3000]}
+    ---
 
-Tone preset: {tone_key}
+    Detected colors on the site (automatically extracted): {detected_colors_sample}
 
-Analyze this text and extract a BRAND PROFILE that strongly reflects a {tone_label} brand identity and voice. Return ONLY valid JSON."""
+    Tone preset: {tone_key}
+
+    Analyze this text and extract a BRAND PROFILE that strongly reflects a {tone_label} brand identity and voice. Return ONLY valid JSON where the `colors` field is an array of objects with `name` and `hex` keys."""
 
     try:
         print(f"Calling Groq API with tone mode: {tone_label}")

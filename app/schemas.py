@@ -18,7 +18,8 @@ class BrandProfile(BaseModel):
     target_audience: List[str]
     tone: str
     keywords: List[str]
-    colors: List[str]  # hex codes like "#RRGGBB"
+    # colors may be hex strings, color names, or objects like {"name":"Silver","hex":"#C0C0C0"}
+    colors: List[object]
 
 
 class GeneratedPost(BaseModel):

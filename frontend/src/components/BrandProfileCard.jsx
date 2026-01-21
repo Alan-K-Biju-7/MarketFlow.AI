@@ -2,6 +2,69 @@ import React from 'react';
 import { FaBuilding, FaBullseye, FaTag, FaPalette, FaQuoteLeft } from 'react-icons/fa';
 
 const BrandProfileCard = ({ brandProfile }) => {
+  // Approximate friendly name from hex when LLM didn't provide a name
+  function approxNameFromHex(hex) {
+    if (!hex) return '';
+    const m = hex.replace('#', '');
+    if (!/^[0-9A-Fa-f]{6}$/.test(m)) return '';
+    const r = parseInt(m.slice(0,2), 16);
+    const g = parseInt(m.slice(2,4), 16);
+    const b = parseInt(m.slice(4,6), 16);
+    // Grayscale
+    if (r === g && g === b) {
+      if (r > 230) return 'White';
+      if (r > 180) return 'Light Gray';
+      if (r > 100) return 'Gray';
+      if (r > 40) return 'Dark Gray';
+      return 'Black';
+    }
+    // Find dominant channel
+    if (r > g && r > b) {
+      if (r > 200 && g < 100 && b < 120) return 'Red';
+      if (g > 150 && b < 100) return 'Olive';
+      return 'Red';
+    }
+    if (g > r && g > b) {
+      if (g > 200) return 'Lime';
+      return 'Green';
+    }
+    if (b > r && b > g) {
+      if (b > 200) return 'Blue';
+      return 'Blue';
+    }
+    return '';
+  }
+
+  // Normalize color entries which may be strings ("#rrggbb" or "red")
+  // or objects returned by LLMs like { name: 'Red', hex: '#ff0000' }
+  const parseColor = (color) => {
+    if (!color && color !== 0) return { value: '', label: '' };
+
+    // If it's already a string, try to make it a valid hex or keep the name
+    if (typeof color === 'string') {
+      let c = color.trim();
+      // If value looks like 6 hex chars without '#', add it
+      if (/^[0-9A-Fa-f]{6}$/.test(c)) c = `#${c}`;
+      return { value: c, label: c };
+    }
+
+    // If it's an object, prefer common keys
+    if (typeof color === 'object') {
+      const hex = color.hex || color.hex_code || color.value || color.code || color.color;
+      const name = color.name || color.label || '';
+      if (hex) {
+        let v = String(hex).trim();
+        if (/^[0-9A-Fa-f]{6}$/.test(v)) v = `#${v}`;
+        const label = name || approxNameFromHex(v) || v;
+        return { value: v, label };
+      }
+      const label = name || JSON.stringify(color);
+      return { value: label, label };
+    }
+
+    return { value: String(color), label: String(color) };
+  };
+
   return (
     <div className="bg-gradient-to-br from-white to-indigo-50 rounded-xl shadow-xl p-8 mb-10 border border-indigo-100">
       <div className="flex items-center mb-6">
@@ -59,15 +122,18 @@ const BrandProfileCard = ({ brandProfile }) => {
           <h3 className="font-bold text-gray-800">Brand Colors</h3>
         </div>
         <div className="flex gap-3">
-          {brandProfile.colors.map((color, index) => (
-            <div key={index} className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg border border-gray-200">
-              <div 
-                className="w-8 h-8 rounded-md border-2 border-gray-300 shadow-sm" 
-                style={{ backgroundColor: color }}
-              ></div>
-              <span className="text-sm font-mono text-gray-600">{color}</span>
-            </div>
-          ))}
+          {brandProfile.colors.map((color, index) => {
+            const { value, label } = parseColor(color);
+            return (
+              <div key={index} className="flex items-center space-x-2 bg-white px-4 py-2 rounded-lg border border-gray-200">
+                <div
+                  className="w-8 h-8 rounded-md border-2 border-gray-300 shadow-sm"
+                  style={{ backgroundColor: value || 'transparent' }}
+                ></div>
+                <span className="text-sm font-mono text-gray-600">{label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
