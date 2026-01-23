@@ -64,10 +64,6 @@ const URLInputForm = ({ onSubmit, loading }) => {
           {loading ? 'Generating Content...' : '✨ Generate Marketing Content'}
         </button>
       </form>
-
-      <div className="mt-6 text-center text-sm text-gray-500">
-        <p>💡 Try: tesla.com, starbucks.com, stripe.com</p>
-      </div>
     </div>
   );
 };

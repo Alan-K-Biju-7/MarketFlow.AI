@@ -1,230 +1,203 @@
 """
-Image Generation using Pexels API (Primary) + Unsplash Fallback
-FREE: 200 requests/hour via Pexels
-Falls back to Unsplash (50/hour) if Pexels unavailable
-Real professional stock photos - instantly
+Production Pexels Image Generator
+Context-aware image selection from Pexels catalog
 """
 
 import requests
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
-class ImageGenerator:
+class PexelsImageGenerator:
     """
-    Professional stock photos from Pexels with Unsplash fallback
+    Pexels-based image generator with smart product detection
     """
     
-    PEXELS_API = "https://api.pexels.com/v1/search"
-    UNSPLASH_API = "https://source.unsplash.com/featured"
+    PEXELS_API_URL = "https://api.pexels.com/v1/search"
+    PEXELS_API_KEY = "563492ad6f91700001000001c3b8975a742f4d6a803f1a9f44b33d8b"
     
     PLATFORM_SPECS = {
-        "instagram": {
-            "width": 1080,
-            "height": 1080,
-            "orientation": "square",
-            "keywords": ["lifestyle", "cafe", "people", "community", "business"]
-        },
-        "linkedin": {
-            "width": 1200,
-            "height": 627,
-            "orientation": "landscape",
-            "keywords": ["business", "office", "professional", "corporate", "workspace"]
-        },
-        "x": {
-            "width": 1200,
-            "height": 675,
-            "orientation": "landscape",
-            "keywords": ["dynamic", "innovation", "technology", "action", "modern"]
-        }
+        "instagram": {"width": 1080, "height": 1080, "orientation": "square"},
+        "linkedin": {"width": 1200, "height": 630, "orientation": "landscape"},
+        "x": {"width": 1200, "height": 675, "orientation": "landscape"}
+    }
+    
+    # Brand-specific search queries
+    BRAND_QUERIES = {
+        "starbucks": ["coffee cup latte art", "cafe barista", "espresso drink"],
+        "apple": ["modern smartphone", "laptop workspace", "wireless earbuds"],
+        "tesla": ["electric vehicle", "modern car", "sustainable transport"],
+        "nike": ["athletic sneakers", "running shoes", "sports footwear"],
+        "neurobots": ["robotics team", "tech competition", "engineering students"]
     }
     
     def __init__(self):
-        """Initialize with Pexels API key"""
-        # Use provided demo key or environment variable
-        self.api_key = os.getenv("PEXELS_API_KEY", "563492ad6f91700001000001c3b8975a742f4d6a803f1a9f44b33d8b")
-        print("✅ Image Generation Ready (Pexels 200/hr + Unsplash fallback)")
+        """Initialize Pexels API"""
+        self.api_key = os.getenv("PEXELS_API_KEY", self.PEXELS_API_KEY)
+        self.session = requests.Session()
+        self.session.headers.update({"Authorization": self.api_key})
+        print("✅ Pexels Image Generator initialized")
     
-    def generate_via_pexels(
+    def build_search_query(
+        self,
+        brand_name: str,
+        products: List[str],
+        platform: str
+    ) -> str:
+        """
+        Build smart search query for Pexels
+        """
+        
+        brand_lower = brand_name.lower()
+        
+        # Check for known brands
+        for brand_key, queries in self.BRAND_QUERIES.items():
+            if brand_key in brand_lower:
+                return queries[0]  # Return primary query
+        
+        # Build from products
+        if products:
+            # Use first product + platform context
+            platform_context = {
+                "instagram": "lifestyle",
+                "linkedin": "professional",
+                "x": "modern"
+            }
+            context = platform_context.get(platform, "modern")
+            return f"{products[0]} {context}"
+        
+        # Fallback
+        return f"{brand_name} product"
+    
+    def search_pexels(
         self,
         query: str,
-        platform: str,
-        post_index: int = 0
-    ) -> Optional[str]:
-        """Try to get image from Pexels API"""
+        orientation: str,
+        per_page: int = 15
+    ) -> Optional[List[Dict]]:
+        """Search Pexels API"""
+        
+        params = {
+            "query": query,
+            "orientation": orientation,
+            "per_page": per_page,
+            "size": "large"
+        }
+        
         try:
-            spec = self.PLATFORM_SPECS.get(platform.lower(), self.PLATFORM_SPECS["instagram"])
-            
-            headers = {"Authorization": self.api_key}
-            params = {
-                "query": query,
-                "orientation": spec['orientation'],
-                "size": "large",
-                "per_page": 10
-            }
-            
-            response = requests.get(
-                self.PEXELS_API,
-                headers=headers,
+            response = self.session.get(
+                self.PEXELS_API_URL,
                 params=params,
-                timeout=8
+                timeout=10
             )
             
             if response.status_code == 200:
                 data = response.json()
-                
-                if data.get('photos'):
-                    # Get photo based on post_index (cycle through results)
-                    photo = data['photos'][post_index % len(data['photos'])]
-                    image_url = photo['src']['large']
-                    
-                    print(f"     ✅ Pexels (by {photo['photographer']})")
-                    return image_url
-            else:
-                print(f"     ⚠️  Pexels {response.status_code}")
-                return None
-        
-        except Exception as e:
-            print(f"     ⚠️  Pexels error: {str(e)[:50]}")
+                return data.get("photos", [])
+            
             return None
-    
-    def generate_via_unsplash(
-        self,
-        query: str,
-        platform: str
-    ) -> str:
-        """Fallback to Unsplash"""
-        spec = self.PLATFORM_SPECS.get(platform.lower(), self.PLATFORM_SPECS["instagram"])
-        image_url = (
-            f"{self.UNSPLASH_API}/{spec['width']}x{spec['height']}"
-            f"?{query}"
-        )
-        print(f"     ✅ Unsplash (fallback)")
-        return image_url
-    
-    def build_search_query(self, brand_name: str, keywords: list = None) -> str:
-        """Build relevant search query from brand info"""
-        
-        search_terms = []
-        
-        # Add brand name
-        if brand_name and brand_name != "Brand":
-            search_terms.append(brand_name)
-        
-        # Add keywords
-        if keywords and len(keywords) > 0:
-            filtered = [k for k in keywords if k and k.strip()]
-            search_terms.extend(filtered[:2])
-        
-        # Fallback
-        query = " ".join(search_terms) if search_terms else "business"
-        return query
+            
+        except Exception as e:
+            print(f"     ❌ Pexels error: {e}")
+            return None
     
     def generate_post_image(
         self,
-        brand_name: str,
-        post_caption: str,
+        brand_profile,
+        post: Dict,
         platform: str,
-        keywords: list = None,
         post_index: int = 0
     ) -> str:
         """
-        Generate platform-specific image
-        Tries Pexels first, falls back to Unsplash
+        Generate image URL from Pexels
+        
+        Args:
+            brand_profile: BrandProfile Pydantic object
+            post: Dict with 'caption', 'platform', etc.
+            platform: 'instagram', 'linkedin', or 'x'
+            post_index: Index for variety
+            
+        Returns:
+            str: Image URL
         """
         
-        platform_lower = platform.lower()
-        if platform_lower not in self.PLATFORM_SPECS:
-            platform_lower = "instagram"
-        
-        spec = self.PLATFORM_SPECS[platform_lower]
-        
-        # Build search query
-        query = self.build_search_query(brand_name, keywords)
-        
-        print(f"  📸 Getting {platform.upper()} image for {brand_name}")
-        print(f"     Search: {query}")
-        print(f"     Size: {spec['width']}x{spec['height']}")
-        
-        # Try Pexels first
-        image_url = self.generate_via_pexels(query, platform_lower, post_index)
-        
-        # Fallback to Unsplash if Pexels fails
-        if not image_url:
-            image_url = self.generate_via_unsplash(query, platform_lower)
-        
-        return image_url
-
-
-# Global singleton
-_generator: Optional[ImageGenerator] = None
-
-def get_generator() -> ImageGenerator:
-    """Get or create singleton instance"""
-    global _generator
-    if _generator is None:
-        _generator = ImageGenerator()
-    return _generator
-
-def generate_post_image(
-    brand_name: str,
-    post_caption: str,
-    platform: str,
-    tone: str = None,
-    hashtags: list = None,
-    **kwargs
-) -> str:
-    """
-    Public API: Generate platform-specific image
-    
-    Uses Pexels (200/hr) with Unsplash (50/hr) fallback
-    Always returns a professional stock photo URL
-    
-    Args:
-        brand_name: str - Brand/company name
-        post_caption: str - Post caption text
-        platform: str - 'Instagram', 'LinkedIn', or 'X'
-        tone: str - Tone (optional, for compatibility)
-        hashtags: list - Hashtags (used as keywords)
-        
-    Returns:
-        str: Image URL ready for display
-    """
-    generator = get_generator()
-    keywords = hashtags or []
-    
-    return generator.generate_post_image(
-        brand_name=brand_name,
-        post_caption=post_caption,
-        platform=platform,
-        keywords=keywords,
-        post_index=0
-    )
-
-
-def generate_multiple_images(brand_name: str, posts: list) -> dict:
-    """
-    Generate images for multiple posts
-    """
-    image_urls = {}
-    generator = get_generator()
-    
-    for idx, post in enumerate(posts):
         try:
-            platform = post.get("platform", "Instagram") if isinstance(post, dict) else getattr(post, "platform", "Instagram")
-            hashtags = post.get("hashtags", []) if isinstance(post, dict) else getattr(post, "hashtags", [])
-            caption = post.get("caption", "") if isinstance(post, dict) else getattr(post, "caption", "")
+            # Normalize platform
+            platform = str(platform).lower()
+            spec = self.PLATFORM_SPECS.get(platform, self.PLATFORM_SPECS["instagram"])
             
-            image_url = generator.generate_post_image(
-                brand_name=brand_name,
-                post_caption=caption,
-                platform=platform,
-                keywords=hashtags,
-                post_index=idx
+            # Get brand name
+            brand_name = getattr(brand_profile, 'brand_name', 'Brand')
+            
+            print(f"  📸 Generating {platform.upper()} image for {brand_name}")
+            
+            # Extract products
+            products = []
+            if hasattr(brand_profile, 'products_services') and brand_profile.products_services:
+                products = [str(p).lower() for p in brand_profile.products_services[:3]]
+            
+            if products:
+                print(f"     Products: {', '.join(products)}")
+            
+            # Build query
+            query = self.build_search_query(brand_name, products, platform)
+            print(f"     Search: '{query}'")
+            
+            # Search Pexels
+            photos = self.search_pexels(
+                query=query,
+                orientation=spec["orientation"],
+                per_page=15
             )
-            image_urls[idx] = image_url
+            
+            if photos and len(photos) > 0:
+                # Select photo with variety
+                index = post_index % len(photos)
+                photo = photos[index]
+                image_url = photo["src"]["large"]
+                
+                print(f"     ✅ Found: {photo.get('photographer', 'Unknown')}")
+                return image_url
+            
+            # Fallback to Lorem Picsum
+            print(f"     ⚠️  No results, using fallback")
+            import hashlib
+            seed = int(hashlib.md5(f"{brand_name}{platform}{post_index}".encode()).hexdigest()[:8], 16) % 1000
+            return f"https://picsum.photos/{spec['width']}/{spec['height']}?random={seed}"
             
         except Exception as e:
-            print(f"❌ Error generating image for post {idx}: {e}")
-            image_urls[idx] = None
+            print(f"     ❌ Error: {e}")
+            # Ultimate fallback
+            return f"https://picsum.photos/1080/1080?random={abs(hash(str(brand_profile.brand_name))) % 1000}"
+
+
+# Singleton
+_generator = None
+
+def get_generator() -> PexelsImageGenerator:
+    """Get or create generator singleton"""
+    global _generator
+    if _generator is None:
+        _generator = PexelsImageGenerator()
+    return _generator
+
+
+def generate_post_image(
+    brand_profile,
+    post: Dict,
+    platform: str,
+    post_index: int = 0
+) -> str:
+    """
+    Public API: Generate image from Pexels catalog
     
-    return image_urls
+    Args:
+        brand_profile: BrandProfile Pydantic model
+        post: Dict with post data (must have 'caption' key)
+        platform: 'Instagram', 'LinkedIn', or 'X'
+        post_index: Post index for variety (0-4)
+        
+    Returns:
+        str: Image URL from Pexels or fallback
+    """
+    generator = get_generator()
+    return generator.generate_post_image(brand_profile, post, platform, post_index)

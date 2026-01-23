@@ -21,23 +21,32 @@ async def analyze_website(request: AnalyzeRequest):
         # 3. Generate posts
         posts = generate_posts(brand_profile, request.tonePreset)
         
-        # 4. Generate images for each post (NEW!)
+        # 4. Generate images for each post
         from app.services.image_gen import generate_post_image
         
-        for post in posts:
+        for idx, post in enumerate(posts):
             try:
+                # Convert Pydantic model to dict
+                post_dict = post.dict() if hasattr(post, 'dict') else post.model_dump()
+                platform = post_dict.get('platform', 'Instagram')
+                
+                print(f"\n🎨 Generating image for {platform} post {idx + 1}...")
+                
+                # Call with correct signature
                 image_url = generate_post_image(
-                    brand_name=brand_profile.brand_name,
-                    post_caption=post.caption,
-                    platform=post.platform,
-                    tone=post.tone,
-                    hashtags=post.hashtags
+                    brand_profile=brand_profile,
+                    post=post_dict,
+                    platform=platform,
+                    post_index=idx
                 )
+                
                 post.image_url = image_url
-                print(f"✅ Generated image for {post.platform} post")
+                print(f"✅ Image generated for {platform}")
+                
             except Exception as e:
                 print(f"⚠️ Failed to generate image for {post.platform}: {e}")
-                post.image_url = None
+                # Fallback image
+                post.image_url = f"https://picsum.photos/1080/1080?random={idx}"
         
         return AnalyzeResponse(
             brand_profile=brand_profile,
