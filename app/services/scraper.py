@@ -17,8 +17,6 @@ groq_client = Groq(
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# Rest of your code...
-
 
 def generate_fallback_from_url(url: str) -> str:
     """Use LLM to intelligently guess website content from URL when scraping fails"""
