@@ -5,6 +5,8 @@ The goal is to compress the workflow of “understand the brand → write posts 
 
 ***
 
+
+
 🧠 Project Overview  
 
 Most small and mid‑sized brands have a website but lack time and resources to consistently create on‑brand social content. Typical pain points include:
@@ -117,6 +119,7 @@ This label is displayed on each post card in the UI and can be used by other sys
 ***
 
 ### 4. Context‑Aware Image Selection (Pexels Catalog)  
+
 
 Instead of generating images, the project uses the Pexels stock image API to retrieve photos that fit the brand and post context.
 
