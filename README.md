@@ -336,11 +336,3 @@ npm start   # or npm run dev
 5. Copy any post into your social tool of choice, or have another system consume the JSON and schedule content automatically.
 
 ***
-
-👨‍💻 Project Context  
-
-This project is designed as a practical, extensible content engine for agencies, founders, and marketing tools. Another AI integrating with MarketFlow AI only needs to:
-
-- Call `POST /analyze` with a URL,  
-- Parse the Brand Profile and posts,  
-- Optionally re‑rank posts using its own logic, or translate/adapt them for other markets and platforms.
