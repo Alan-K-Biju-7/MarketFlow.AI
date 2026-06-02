@@ -7,10 +7,12 @@ from app.services.analytics import score_post
 from dotenv import load_dotenv
 load_dotenv()
 
-# Groq client (SDK handles URL automatically)
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+
+def get_groq_client() -> Groq:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not set")
+    return Groq(api_key=api_key)
 
 def generate_posts(brand_profile: BrandProfile, tone_preset: str) -> List[GeneratedPost]:
     """
@@ -58,7 +60,7 @@ Create 5 platform-specific social media posts as a JSON array."""
 
     try:
         print("Calling Groq API for posts...")
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -84,7 +86,8 @@ Create 5 platform-specific social media posts as a JSON array."""
                 tone=post_data.get("tone", tone_preset),
                 engagement_score_label=score_post(
                     post_data.get("caption", ""),
-                    post_data.get("hashtags", [])
+                    post_data.get("hashtags", []),
+                    post_data.get("cta", "")
                 )
             )
             posts.append(post)
