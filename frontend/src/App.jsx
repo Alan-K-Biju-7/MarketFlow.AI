@@ -13,13 +13,13 @@ function App() {
   const [result, setResult] = useState(null);
   const [filterPlatform, setFilterPlatform] = useState('All');
 
-  const handleSubmit = async (url, tonePreset) => {
+  const handleSubmit = async (url, tonePreset, fallbackText) => {
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const data = await analyzeWebsite(url, tonePreset);
+      const data = await analyzeWebsite(url, tonePreset, fallbackText);
       setResult(data);
     } catch (err) {
       setError(err.message || 'Failed to analyze website. Please try again.');
@@ -43,6 +43,14 @@ function App() {
     if (result) {
       downloadCSV(result);
     }
+  };
+
+  const handleCopyAll = async () => {
+    if (!result) return;
+    const text = result.posts
+      .map((post) => `${post.platform}\n${post.caption}\n${post.hashtags.join(' ')}\n${post.cta}`)
+      .join('\n\n---\n\n');
+    await navigator.clipboard.writeText(text);
   };
 
   return (
@@ -88,46 +96,77 @@ function App() {
             {/* Brand Profile */}
             <BrandProfileCard brandProfile={result.brand_profile} />
 
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <p className="text-xs uppercase font-bold text-gray-500">Posts</p>
+                <p className="text-2xl font-black text-gray-900">{result.posts.length}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <p className="text-xs uppercase font-bold text-gray-500">Platforms</p>
+                <p className="text-2xl font-black text-gray-900">{new Set(result.posts.map((post) => post.platform)).size}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <p className="text-xs uppercase font-bold text-gray-500">High Score</p>
+                <p className="text-2xl font-black text-gray-900">
+                  {result.posts.filter((post) => post.engagement_score_label === 'High').length}
+                </p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <p className="text-xs uppercase font-bold text-gray-500">Images</p>
+                <p className="text-2xl font-black text-gray-900">
+                  {result.posts.filter((post) => post.image_url).length}
+                </p>
+              </div>
+            </div>
+
             {/* Export Buttons */}
-            <div className="flex items-center justify-between bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-xl p-6 shadow-lg border border-gray-200">
               <div className="flex items-center space-x-2">
                 <FaDownload className="text-indigo-600 text-xl" />
                 <span className="font-bold text-gray-800 text-lg">Export Campaign</span>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleCopyAll}
+                  className="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2 rounded-lg font-semibold transition-all shadow-md"
+                >
+                  Copy All
+                </button>
                 <button
                   onClick={handleDownloadCSV}
                   className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-semibold transition-all shadow-md"
                 >
-                  📊 Download CSV
+                  Download CSV
                 </button>
                 <button
                   onClick={handleDownloadJSON}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold transition-all shadow-md"
                 >
-                  📄 Download JSON
+                  Download JSON
                 </button>
               </div>
             </div>
 
             {/* Platform Filter */}
             <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <FaFilter className="text-indigo-600 text-xl" />
                 <span className="font-bold text-gray-800 text-lg">Filter by Platform:</span>
-                {['All', 'Instagram', 'LinkedIn', 'X'].map((platform) => (
-                  <button
-                    key={platform}
-                    onClick={() => setFilterPlatform(platform)}
-                    className={`px-5 py-2 rounded-lg font-semibold transition-all ${
-                      filterPlatform === platform
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {platform}
-                  </button>
-                ))}
+                <div className="flex flex-wrap gap-3">
+                  {['All', 'Instagram', 'LinkedIn', 'X'].map((platform) => (
+                    <button
+                      key={platform}
+                      onClick={() => setFilterPlatform(platform)}
+                      className={`px-5 py-2 rounded-lg font-semibold transition-all ${
+                        filterPlatform === platform
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {platform}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
