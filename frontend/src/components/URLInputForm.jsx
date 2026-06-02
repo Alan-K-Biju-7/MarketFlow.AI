@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 const URLInputForm = ({ onSubmit, loading }) => {
   const [url, setUrl] = useState('');
   const [tonePreset, setTonePreset] = useState('auto');
+  const [fallbackText, setFallbackText] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (url.trim()) {
-      onSubmit(url, tonePreset);
+      onSubmit(url, tonePreset, fallbackText);
     }
   };
 
@@ -40,6 +41,20 @@ const URLInputForm = ({ onSubmit, loading }) => {
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Brand Context
+          </label>
+          <textarea
+            value={fallbackText}
+            onChange={(e) => setFallbackText(e.target.value)}
+            placeholder="Optional: add products, audience, differentiators, offers, or brand notes."
+            className="w-full min-h-28 px-5 py-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-base resize-y"
+            disabled={loading}
+            maxLength={4000}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
             Brand Tone
           </label>
           <select
@@ -61,7 +76,7 @@ const URLInputForm = ({ onSubmit, loading }) => {
           disabled={loading}
           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] shadow-lg text-lg"
         >
-          {loading ? 'Generating Content...' : '✨ Generate Marketing Content'}
+          {loading ? 'Generating Content...' : 'Generate Marketing Content'}
         </button>
       </form>
     </div>
