@@ -12,10 +12,12 @@ from urllib.parse import urljoin
 # Load .env early so environment variables are available
 load_dotenv()
 
-# Groq client (SDK handles URL automatically)
-groq_client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+
+def get_groq_client() -> Groq:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not set")
+    return Groq(api_key=api_key)
 
 
 def generate_fallback_from_url(url: str) -> str:
@@ -31,7 +33,7 @@ Be specific and realistic. Output plain text only, no formatting."""
     
     try:
         print(f"🤖 Generating AI fallback for {domain}...")
-        response = groq_client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
