@@ -13,8 +13,6 @@ class PexelsImageGenerator:
     """
     
     PEXELS_API_URL = "https://api.pexels.com/v1/search"
-    PEXELS_API_KEY = "563492ad6f91700001000001c3b8975a742f4d6a803f1a9f44b33d8b"
-    
     PLATFORM_SPECS = {
         "instagram": {"width": 1080, "height": 1080, "orientation": "square"},
         "linkedin": {"width": 1200, "height": 630, "orientation": "landscape"},
@@ -32,10 +30,13 @@ class PexelsImageGenerator:
     
     def __init__(self):
         """Initialize Pexels API"""
-        self.api_key = os.getenv("PEXELS_API_KEY", self.PEXELS_API_KEY)
+        self.api_key = os.getenv("PEXELS_API_KEY")
         self.session = requests.Session()
-        self.session.headers.update({"Authorization": self.api_key})
-        print("✅ Pexels Image Generator initialized")
+        if self.api_key:
+            self.session.headers.update({"Authorization": self.api_key})
+            print("Pexels Image Generator initialized")
+        else:
+            print("PEXELS_API_KEY not set; image generation will use placeholders")
     
     def build_search_query(
         self,
@@ -75,6 +76,8 @@ class PexelsImageGenerator:
         per_page: int = 15
     ) -> Optional[List[Dict]]:
         """Search Pexels API"""
+        if not self.api_key:
+            return None
         
         params = {
             "query": query,
