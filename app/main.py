@@ -1,22 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import get_settings
 from app.routes import analyze
 
+settings = get_settings()
+
 app = FastAPI(
-    title="MarketFlow AI API",
+    title=settings.app_name,
     description="AI-powered marketing content generator"
 )
 
-# ADD THIS CORS MIDDLEWARE (CRITICAL!)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
 app.include_router(analyze.router)
 
 @app.get("/")
