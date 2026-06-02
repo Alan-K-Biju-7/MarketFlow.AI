@@ -1,25 +1,38 @@
-import axios from 'axios';
-
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export const analyzeWebsite = async (url, tonePreset = 'auto') => {
+export const analyzeWebsite = async (url, tonePreset = 'auto', fallbackText = '') => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
+
   try {
-    const response = await axios.post(`${API_BASE_URL}/analyze`, {
-      url: url,
-      tonePreset: tonePreset
-    }, {
-      timeout: 90000
+    const response = await fetch(`${API_BASE_URL}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url,
+        tonePreset,
+        fallbackText: fallbackText.trim() || undefined,
+      }),
+      signal: controller.signal,
     });
-    return response.data;
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Server error occurred');
+    }
+
+    return data;
   } catch (error) {
     console.error('API Error:', error);
-    if (error.response) {
-      throw new Error(error.response.data.detail || 'Server error occurred');
-    } else if (error.request) {
-      throw new Error('No response from server. Check your connection.');
-    } else {
-      throw new Error('Failed to make request');
+    if (error.name === 'AbortError') {
+      throw new Error('The request timed out. Please try again.');
     }
+    throw new Error(error.message || 'Failed to make request');
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
