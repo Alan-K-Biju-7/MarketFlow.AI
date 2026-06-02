@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from app.schemas import AnalyzeRequest, AnalyzeResponse
 from app.services.scraper import fetch_website_text
@@ -5,6 +7,7 @@ from app.services.brand_profile import generate_brand_profile
 from app.services.posts import generate_posts
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_website(request: AnalyzeRequest):
@@ -13,7 +16,7 @@ async def analyze_website(request: AnalyzeRequest):
     """
     try:
         # 1. Scrape website (also returns detected color hex codes)
-        website_text, detected_colors = fetch_website_text(request.url, fallback_text=request.fallbackText)
+        website_text, detected_colors = fetch_website_text(str(request.url), fallback_text=request.fallbackText)
 
         # 2. Generate brand profile, pass detected colors to help the LLM name them
         brand_profile = generate_brand_profile(website_text, request.tonePreset, detected_colors=detected_colors)
@@ -53,5 +56,9 @@ async def analyze_website(request: AnalyzeRequest):
             posts=posts
         )
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Website analysis failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Analysis failed. Check API keys, website accessibility, and server logs.",
+        )
