@@ -5,10 +5,12 @@ from app.schemas import BrandProfile
 from dotenv import load_dotenv
 load_dotenv()
 
-# Groq client (SDK handles URL automatically)
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+
+def get_groq_client() -> Groq:
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not set")
+    return Groq(api_key=api_key)
 
 def generate_brand_profile(website_text: str, tone_preset: str, detected_colors: list = None) -> BrandProfile:
     """
@@ -139,7 +141,7 @@ Rules:
 
     try:
         print(f"Calling Groq API with tone mode: {tone_label}")
-        response = client.chat.completions.create(
+        response = get_groq_client().chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_instruction},
