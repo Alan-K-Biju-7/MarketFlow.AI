@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaBolt, FaBuilding, FaGlobe, FaPenNib } from 'react-icons/fa';
+import { FaBolt, FaBuilding, FaGlobe, FaImage, FaPenNib } from 'react-icons/fa';
 
 const examples = [
   'SaaS for busy founders',
@@ -11,11 +11,12 @@ const URLInputForm = ({ onSubmit, loading }) => {
   const [url, setUrl] = useState('');
   const [tonePreset, setTonePreset] = useState('auto');
   const [fallbackText, setFallbackText] = useState('');
+  const [imageProvider, setImageProvider] = useState('hybrid');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (url.trim()) {
-      onSubmit(url, tonePreset, fallbackText);
+      onSubmit(url, tonePreset, fallbackText, imageProvider);
     }
   };
 
@@ -56,7 +57,7 @@ const URLInputForm = ({ onSubmit, loading }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid md:grid-cols-[minmax(0,1fr)_240px] gap-4">
+        <div className="grid md:grid-cols-[minmax(0,1fr)_220px_220px] gap-4">
           <label className="block">
             <span className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
               <FaGlobe className="text-teal-700" />
@@ -89,6 +90,23 @@ const URLInputForm = ({ onSubmit, loading }) => {
               <option value="cafe">Cafe</option>
               <option value="ngo">NGO</option>
               <option value="enterprise">Enterprise</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
+              <FaImage className="text-teal-700" />
+              Creative Mode
+            </span>
+            <select
+              value={imageProvider}
+              onChange={(e) => setImageProvider(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-transparent transition-all text-base bg-white"
+              disabled={loading}
+            >
+              <option value="hybrid">AI + stock fallback</option>
+              <option value="gemini">Gemini AI images</option>
+              <option value="pexels">Pexels stock photos</option>
             </select>
           </label>
         </div>

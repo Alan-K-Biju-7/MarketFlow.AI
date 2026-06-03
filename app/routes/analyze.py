@@ -41,16 +41,18 @@ async def analyze_website(request: AnalyzeRequest):
                 
                 print(f"\n🎨 Generating image for {platform} post {idx + 1}...")
                 
-                # Call with correct signature
-                image_url = generate_post_image(
+                image_result = generate_post_image(
                     brand_profile=brand_profile,
                     post=post_dict,
                     platform=platform,
-                    post_index=idx
+                    post_index=idx,
+                    provider=request.imageProvider,
                 )
                 
-                post.image_url = image_url
-                print(f"✅ Image generated for {platform}")
+                post.image_url = image_result.get("url")
+                post.image_provider = image_result.get("provider")
+                post.image_prompt = image_result.get("prompt")
+                print(f"✅ Image prepared for {platform} using {post.image_provider}")
                 
             except Exception as e:
                 print(f"⚠️ Failed to generate image for {post.platform}: {e}")

@@ -3,7 +3,7 @@ const API_BASE_URL =
   import.meta.env.REACT_APP_API_URL ||
   'http://localhost:8000';
 
-export const analyzeWebsite = async (url, tonePreset = 'auto', fallbackText = '') => {
+export const analyzeWebsite = async (url, tonePreset = 'auto', fallbackText = '', imageProvider = 'hybrid') => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 90000);
 
@@ -17,6 +17,7 @@ export const analyzeWebsite = async (url, tonePreset = 'auto', fallbackText = ''
         url,
         tonePreset,
         fallbackText: fallbackText.trim() || undefined,
+        imageProvider,
       }),
       signal: controller.signal,
     });
@@ -57,12 +58,14 @@ export const downloadCSV = (data) => {
   csvContent += `Description,"${brandProfile.description}"\n`;
   csvContent += `Tone,${brandProfile.tone}\n`;
   csvContent += `\n`;
-  csvContent += `Platform,Caption,Hashtags,CTA,Engagement Score\n`;
+  csvContent += `Platform,Caption,Hashtags,CTA,Engagement Score,Image Provider,Image URL\n`;
   
   posts.forEach(post => {
     const hashtags = post.hashtags.join(' ');
     const caption = post.caption.replace(/"/g, '""');
-    csvContent += `${post.platform},"${caption}","${hashtags}",${post.cta},${post.engagement_score_label}\n`;
+    const imageUrl = post.image_url || '';
+    const imageProvider = post.image_provider || '';
+    csvContent += `${post.platform},"${caption}","${hashtags}",${post.cta},${post.engagement_score_label},${imageProvider},${imageUrl}\n`;
   });
   
   const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -105,6 +108,8 @@ export const downloadMarkdown = (data) => {
       `**CTA:** ${post.cta}`,
       '',
       `**Engagement:** ${post.engagement_score_label}`,
+      '',
+      post.image_provider ? `**Image Provider:** ${post.image_provider}` : '',
       '',
       post.image_url ? `**Image:** ${post.image_url}` : '',
       '',

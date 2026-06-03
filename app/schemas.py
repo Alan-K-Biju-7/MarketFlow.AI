@@ -5,11 +5,13 @@ from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
 
 
 TonePreset = Literal["auto", "startup", "cafe", "ngo", "enterprise"]
+ImageProvider = Literal["hybrid", "gemini", "pexels"]
 
 class AnalyzeRequest(BaseModel):
     url: AnyHttpUrl
     tonePreset: TonePreset = "auto"
     fallbackText: Optional[str] = Field(default=None, max_length=4000)
+    imageProvider: ImageProvider = "hybrid"
 
     @field_validator("url")
     @classmethod
@@ -50,6 +52,8 @@ class GeneratedPost(BaseModel):
     tone: str
     engagement_score_label: Literal["Low", "Medium", "High"]
     image_url: Optional[str] = None
+    image_provider: Optional[str] = None
+    image_prompt: Optional[str] = None
 
 class AnalyzeResponse(BaseModel):
     brand_profile: BrandProfile

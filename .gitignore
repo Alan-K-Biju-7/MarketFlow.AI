@@ -30,6 +30,7 @@ dist/
 build/
 *.egg-info/
 frontend/build/
+generated_assets/
 
 # IDE
 .vscode/

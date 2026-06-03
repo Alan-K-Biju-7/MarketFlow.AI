@@ -1,63 +1,191 @@
 """
-Production Pexels Image Generator
-Context-aware image selection from Pexels catalog
+Campaign image provider layer.
+
+Supports Gemini/Nano Banana image generation, Pexels stock search, and a
+hybrid mode that prefers generated campaign assets while keeping stock fallback.
 """
 
-import requests
+import base64
+import hashlib
 import os
-from typing import Dict, List, Optional
+import re
+from pathlib import Path
+from typing import Dict, List, Optional, TypedDict
+
+import requests
+
+
+class ImageResult(TypedDict, total=False):
+    url: str
+    provider: str
+    prompt: str
+
+
+PLATFORM_SPECS = {
+    "instagram": {"width": 1080, "height": 1080, "orientation": "square", "aspect_ratio": "1:1"},
+    "linkedin": {"width": 1200, "height": 630, "orientation": "landscape", "aspect_ratio": "16:9"},
+    "x": {"width": 1200, "height": 675, "orientation": "landscape", "aspect_ratio": "16:9"},
+}
+
+
+def normalize_platform(platform: str) -> str:
+    platform_key = str(platform).lower()
+    if platform_key in {"twitter", "x.com"}:
+        return "x"
+    return platform_key if platform_key in PLATFORM_SPECS else "instagram"
+
+
+def placeholder_result(brand_name: str, platform: str, post_index: int, prompt: str = "") -> ImageResult:
+    spec = PLATFORM_SPECS.get(platform, PLATFORM_SPECS["instagram"])
+    seed = int(hashlib.md5(f"{brand_name}{platform}{post_index}".encode()).hexdigest()[:8], 16) % 1000
+    return {
+        "url": f"https://picsum.photos/{spec['width']}/{spec['height']}?random={seed}",
+        "provider": "placeholder",
+        "prompt": prompt,
+    }
+
+
+def public_asset_url(filename: str) -> str:
+    base_url = os.getenv("PUBLIC_API_BASE_URL", "http://localhost:8000").rstrip("/")
+    return f"{base_url}/generated-assets/{filename}"
+
+
+def safe_slug(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", value).strip("-").lower()
+    return slug[:48] or "campaign"
+
+
+class GeminiImageGenerator:
+    """Generate branded campaign visuals with Gemini native image generation."""
+
+    API_URL = "https://generativelanguage.googleapis.com/v1/models/{model}:generateContent"
+
+    def __init__(self):
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.model = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+        self.asset_dir = Path(os.getenv("GENERATED_ASSET_DIR", "generated_assets"))
+        self.asset_dir.mkdir(parents=True, exist_ok=True)
+        self.session = requests.Session()
+
+        if self.api_key:
+            print(f"Gemini image generator initialized with {self.model}")
+        else:
+            print("GEMINI_API_KEY not set; Gemini image generation will be skipped")
+
+    def build_prompt(self, brand_profile, post: Dict, platform: str) -> str:
+        brand_name = getattr(brand_profile, "brand_name", "Brand")
+        description = getattr(brand_profile, "description", "")
+        products = ", ".join(getattr(brand_profile, "products_services", [])[:4])
+        audience = ", ".join(getattr(brand_profile, "target_audience", [])[:4])
+        tone = getattr(brand_profile, "tone", "modern and confident")
+        caption = str(post.get("caption", ""))[:900]
+        cta = str(post.get("cta", ""))[:180]
+        spec = PLATFORM_SPECS.get(platform, PLATFORM_SPECS["instagram"])
+
+        return (
+            f"Create a polished campaign image for {brand_name}. "
+            f"Platform: {platform}. Aspect ratio: {spec['aspect_ratio']}. "
+            f"Brand description: {description}. Products or services: {products}. "
+            f"Audience: {audience}. Tone: {tone}. "
+            f"Campaign caption context: {caption}. CTA context: {cta}. "
+            "Make it premium, realistic, commercially usable, and visually specific to the brand. "
+            "Avoid small unreadable text, fake UI, distorted hands, watermarks, logos you do not know, "
+            "and generic stock-photo staging. Leave clean negative space for optional social post copy."
+        )
+
+    def extract_inline_image(self, data: Dict) -> Optional[Dict[str, str]]:
+        for candidate in data.get("candidates", []):
+            content = candidate.get("content", {})
+            for part in content.get("parts", []):
+                inline_data = part.get("inlineData") or part.get("inline_data")
+                if not inline_data:
+                    continue
+                encoded = inline_data.get("data")
+                mime_type = inline_data.get("mimeType") or inline_data.get("mime_type") or "image/png"
+                if encoded:
+                    return {"data": encoded, "mime_type": mime_type}
+        return None
+
+    def extension_for_mime(self, mime_type: str) -> str:
+        if "jpeg" in mime_type or "jpg" in mime_type:
+            return "jpg"
+        if "webp" in mime_type:
+            return "webp"
+        return "png"
+
+    def generate_post_image(self, brand_profile, post: Dict, platform: str, post_index: int = 0) -> Optional[ImageResult]:
+        if not self.api_key:
+            return None
+
+        brand_name = getattr(brand_profile, "brand_name", "brand")
+        prompt = self.build_prompt(brand_profile, post, platform)
+        spec = PLATFORM_SPECS.get(platform, PLATFORM_SPECS["instagram"])
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseModalities": ["Image"],
+                "responseFormat": {"image": {"aspectRatio": spec["aspect_ratio"]}},
+            },
+        }
+
+        try:
+            response = self.session.post(
+                self.API_URL.format(model=self.model),
+                headers={"x-goog-api-key": self.api_key, "Content-Type": "application/json"},
+                json=payload,
+                timeout=60,
+            )
+            response.raise_for_status()
+            inline_image = self.extract_inline_image(response.json())
+            if not inline_image:
+                print("Gemini did not return inline image data")
+                return None
+
+            image_bytes = base64.b64decode(inline_image["data"])
+            digest = hashlib.sha256(image_bytes).hexdigest()[:12]
+            ext = self.extension_for_mime(inline_image["mime_type"])
+            filename = f"{safe_slug(brand_name)}-{platform}-{post_index + 1}-{digest}.{ext}"
+            path = self.asset_dir / filename
+            path.write_bytes(image_bytes)
+
+            return {"url": public_asset_url(filename), "provider": f"gemini:{self.model}", "prompt": prompt}
+        except Exception as exc:
+            print(f"Gemini image generation failed: {exc}")
+            return None
+
 
 class PexelsImageGenerator:
-    """
-    Pexels-based image generator with smart product detection
-    """
-    
+    """Pexels-based image generator with smart product detection."""
+
     PEXELS_API_URL = "https://api.pexels.com/v1/search"
-    PLATFORM_SPECS = {
-        "instagram": {"width": 1080, "height": 1080, "orientation": "square"},
-        "linkedin": {"width": 1200, "height": 630, "orientation": "landscape"},
-        "x": {"width": 1200, "height": 675, "orientation": "landscape"}
-    }
-    
-    # Brand-specific search queries
+
     BRAND_QUERIES = {
         "starbucks": ["coffee cup latte art", "cafe barista", "espresso drink"],
         "apple": ["modern smartphone", "laptop workspace", "wireless earbuds"],
         "tesla": ["electric vehicle", "modern car", "sustainable transport"],
         "nike": ["athletic sneakers", "running shoes", "sports footwear"],
-        "neurobots": ["robotics team", "tech competition", "engineering students"]
+        "neurobots": ["robotics team", "tech competition", "engineering students"],
     }
-    
+
     def __init__(self):
-        """Initialize Pexels API"""
         self.api_key = os.getenv("PEXELS_API_KEY")
         self.session = requests.Session()
         if self.api_key:
             self.session.headers.update({"Authorization": self.api_key})
-            print("Pexels Image Generator initialized")
+            print("Pexels image generator initialized")
         else:
-            print("PEXELS_API_KEY not set; image generation will use placeholders")
-    
-    def build_search_query(
-        self,
-        brand_name: str,
-        products: List[str],
-        platform: str,
-        post: Optional[Dict] = None
-    ) -> str:
-        """
-        Build smart search query for Pexels
-        """
-        
+            print("PEXELS_API_KEY not set; Pexels will be skipped")
+
+    def build_search_query(self, brand_name: str, products: List[str], platform: str, post: Optional[Dict] = None) -> str:
         brand_lower = brand_name.lower()
         post = post or {}
         caption = str(post.get("caption", "")).lower()
-        
-        # Check for known brands
+
         for brand_key, queries in self.BRAND_QUERIES.items():
             if brand_key in brand_lower:
-                return queries[0]  # Return primary query
-        
+                return queries[0]
+
         domain_queries = [
             (["marketing", "social media", "campaign", "content", "brand"], "marketing strategy team"),
             (["coffee", "cafe", "bakery", "restaurant"], "cafe coffee lifestyle"),
@@ -72,132 +200,89 @@ class PexelsImageGenerator:
             if any(keyword in haystack for keyword in keywords):
                 return query
 
-        # Build from products
         if products:
-            # Use first product + platform context
-            platform_context = {
-                "instagram": "lifestyle",
-                "linkedin": "professional",
-                "x": "modern"
-            }
-            context = platform_context.get(platform, "modern")
-            return f"{products[0]} {context}"
-        
-        # Fallback
+            platform_context = {"instagram": "lifestyle", "linkedin": "professional", "x": "modern"}
+            return f"{products[0]} {platform_context.get(platform, 'modern')}"
+
         return f"{brand_name} product"
-    
-    def search_pexels(
-        self,
-        query: str,
-        orientation: str,
-        per_page: int = 15
-    ) -> Optional[List[Dict]]:
-        """Search Pexels API"""
+
+    def search_pexels(self, query: str, orientation: str, per_page: int = 15) -> Optional[List[Dict]]:
         if not self.api_key:
             return None
-        
-        params = {
-            "query": query,
-            "orientation": orientation,
-            "per_page": per_page,
-            "size": "large"
-        }
-        
+
         try:
             response = self.session.get(
                 self.PEXELS_API_URL,
-                params=params,
-                timeout=10
+                params={"query": query, "orientation": orientation, "per_page": per_page, "size": "large"},
+                timeout=10,
             )
-            
             if response.status_code == 200:
-                data = response.json()
-                return data.get("photos", [])
-            
+                return response.json().get("photos", [])
             return None
-            
-        except Exception as e:
-            print(f"     ❌ Pexels error: {e}")
+        except Exception as exc:
+            print(f"Pexels search failed: {exc}")
             return None
-    
+
+    def generate_post_image(self, brand_profile, post: Dict, platform: str, post_index: int = 0) -> Optional[ImageResult]:
+        if not self.api_key:
+            return None
+
+        brand_name = getattr(brand_profile, "brand_name", "Brand")
+        products = []
+        if getattr(brand_profile, "products_services", None):
+            products = [str(product).lower() for product in brand_profile.products_services[:3]]
+
+        spec = PLATFORM_SPECS.get(platform, PLATFORM_SPECS["instagram"])
+        query = self.build_search_query(brand_name, products, platform, post)
+        photos = self.search_pexels(query=query, orientation=spec["orientation"], per_page=15)
+
+        if photos:
+            photo = photos[post_index % len(photos)]
+            return {"url": photo["src"]["large"], "provider": "pexels", "prompt": query}
+
+        return None
+
+
+class CampaignImageGenerator:
+    def __init__(self):
+        self.gemini = GeminiImageGenerator()
+        self.pexels = PexelsImageGenerator()
+
     def generate_post_image(
         self,
         brand_profile,
         post: Dict,
         platform: str,
-        post_index: int = 0
-    ) -> str:
-        """
-        Generate image URL from Pexels
-        
-        Args:
-            brand_profile: BrandProfile Pydantic object
-            post: Dict with 'caption', 'platform', etc.
-            platform: 'instagram', 'linkedin', or 'x'
-            post_index: Index for variety
-            
-        Returns:
-            str: Image URL
-        """
-        
-        try:
-            # Normalize platform
-            platform = str(platform).lower()
-            spec = self.PLATFORM_SPECS.get(platform, self.PLATFORM_SPECS["instagram"])
-            
-            # Get brand name
-            brand_name = getattr(brand_profile, 'brand_name', 'Brand')
-            
-            print(f"  📸 Generating {platform.upper()} image for {brand_name}")
-            
-            # Extract products
-            products = []
-            if hasattr(brand_profile, 'products_services') and brand_profile.products_services:
-                products = [str(p).lower() for p in brand_profile.products_services[:3]]
-            
-            if products:
-                print(f"     Products: {', '.join(products)}")
-            
-            # Build query
-            query = self.build_search_query(brand_name, products, platform, post)
-            print(f"     Search: '{query}'")
-            
-            # Search Pexels
-            photos = self.search_pexels(
-                query=query,
-                orientation=spec["orientation"],
-                per_page=15
-            )
-            
-            if photos and len(photos) > 0:
-                # Select photo with variety
-                index = post_index % len(photos)
-                photo = photos[index]
-                image_url = photo["src"]["large"]
-                
-                print(f"     ✅ Found: {photo.get('photographer', 'Unknown')}")
-                return image_url
-            
-            # Fallback to Lorem Picsum
-            print(f"     ⚠️  No results, using fallback")
-            import hashlib
-            seed = int(hashlib.md5(f"{brand_name}{platform}{post_index}".encode()).hexdigest()[:8], 16) % 1000
-            return f"https://picsum.photos/{spec['width']}/{spec['height']}?random={seed}"
-            
-        except Exception as e:
-            print(f"     ❌ Error: {e}")
-            # Ultimate fallback
-            return f"https://picsum.photos/1080/1080?random={abs(hash(str(brand_profile.brand_name))) % 1000}"
+        post_index: int = 0,
+        provider: str = "hybrid",
+    ) -> ImageResult:
+        provider = (provider or os.getenv("IMAGE_PROVIDER", "hybrid")).lower()
+        platform_key = normalize_platform(platform)
+        brand_name = getattr(brand_profile, "brand_name", "Brand")
+
+        if provider in {"gemini", "hybrid"}:
+            gemini_result = self.gemini.generate_post_image(brand_profile, post, platform_key, post_index)
+            if gemini_result:
+                return gemini_result
+
+        if provider in {"pexels", "hybrid", "gemini"}:
+            pexels_result = self.pexels.generate_post_image(brand_profile, post, platform_key, post_index)
+            if pexels_result:
+                return pexels_result
+
+        prompt = ""
+        if provider in {"gemini", "hybrid"}:
+            prompt = self.gemini.build_prompt(brand_profile, post, platform_key)
+        return placeholder_result(brand_name, platform_key, post_index, prompt)
 
 
-# Singleton
 _generator = None
 
-def get_generator() -> PexelsImageGenerator:
-    """Get or create generator singleton"""
+
+def get_generator() -> CampaignImageGenerator:
     global _generator
     if _generator is None:
-        _generator = PexelsImageGenerator()
+        _generator = CampaignImageGenerator()
     return _generator
 
 
@@ -205,19 +290,8 @@ def generate_post_image(
     brand_profile,
     post: Dict,
     platform: str,
-    post_index: int = 0
-) -> str:
-    """
-    Public API: Generate image from Pexels catalog
-    
-    Args:
-        brand_profile: BrandProfile Pydantic model
-        post: Dict with post data (must have 'caption' key)
-        platform: 'Instagram', 'LinkedIn', or 'X'
-        post_index: Post index for variety (0-4)
-        
-    Returns:
-        str: Image URL from Pexels or fallback
-    """
+    post_index: int = 0,
+    provider: str = "hybrid",
+) -> ImageResult:
     generator = get_generator()
-    return generator.generate_post_image(brand_profile, post, platform, post_index)
+    return generator.generate_post_image(brand_profile, post, platform, post_index, provider)

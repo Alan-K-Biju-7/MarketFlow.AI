@@ -64,6 +64,13 @@ const PostCard = ({ post, scheduleSlot }) => {
   const fullPost = `${post.caption}\n\n${post.hashtags.join(' ')}\n\n${post.cta}`;
   const headline = post.caption.split(/[.!?]/)[0];
   const characterCount = post.caption.length;
+  const imageProvider = post.image_provider?.startsWith('gemini')
+    ? 'Gemini AI'
+    : post.image_provider === 'pexels'
+      ? 'Pexels'
+      : post.image_provider === 'placeholder'
+        ? 'Fallback'
+        : null;
 
   return (
     <article className={`bg-white rounded-lg shadow-sm border ${config.border} overflow-hidden flex flex-col`}>
@@ -81,6 +88,11 @@ const PostCard = ({ post, scheduleSlot }) => {
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-4">
             <p className="text-white text-lg font-black leading-tight drop-shadow">{headline}</p>
           </div>
+          {imageProvider && (
+            <div className="absolute left-3 top-3 rounded-md bg-white/95 px-3 py-1 text-xs font-black text-gray-900 shadow-sm">
+              {imageProvider}
+            </div>
+          )}
         </div>
       )}
 

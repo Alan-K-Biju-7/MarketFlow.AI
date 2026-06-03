@@ -1,6 +1,6 @@
 📦 MarketFlow AI — Website‑to‑Social Content Engine  
 
-MarketFlow AI is an AI‑driven system that turns any public website URL into a ready‑to‑deploy social content pack. It analyzes the brand behind the site, writes platform‑specific posts, scores their engagement potential, and attaches contextually relevant catalog images from Pexels.  
+MarketFlow AI is an AI‑driven system that turns any public website URL into a ready‑to‑deploy social content pack. It analyzes the brand behind the site, writes platform‑specific posts, scores their engagement potential, and attaches campaign visuals from Gemini/Nano Banana, Pexels, or a hybrid fallback pipeline.  
 The goal is to compress the workflow of “understand the brand → write posts → pick images” from hours of manual work into under a minute for founders, marketers, and agencies.
 
 ***
@@ -21,7 +21,7 @@ MarketFlow AI solves this by:
 - Scraping and summarizing a brand’s website into a structured **Brand Profile**  
 - Generating **5 social posts** tailored to specific platforms  
 - Computing an **engagement score label** (High / Medium / Low) per post using heuristic rules  
-- Attaching **Pexels catalog images** that match the brand’s industry, products, and audience  
+- Attaching **AI-generated or stock campaign visuals** that match the brand’s industry, products, and audience  
 - Returning everything as a clean JSON payload that any frontend, scheduler, or downstream AI can consume
 
 Core functional capabilities:
@@ -30,7 +30,7 @@ Core functional capabilities:
 - Structured brand profiling (name, description, offerings, audience, tone, keywords, colors)  
 - Multi‑platform post generation (Instagram, LinkedIn, X)  
 - Heuristic engagement scoring and labeling  
-- Context‑aware stock image retrieval from Pexels with safe fallbacks  
+- Gemini/Nano Banana image generation, context‑aware Pexels retrieval, and safe fallbacks  
 - Single API (`POST /analyze`) suitable for UI and programmatic use
 
 ***
@@ -118,13 +118,15 @@ This label is displayed on each post card in the UI and can be used by other sys
 
 ***
 
-### 4. Context‑Aware Image Selection (Pexels Catalog)  
+### 4. Campaign Visual Generation (Gemini + Pexels)  
 
 
-Instead of generating images, the project uses the Pexels stock image API to retrieve photos that fit the brand and post context.
+The project supports three visual modes: Gemini/Nano Banana generated images, Pexels stock retrieval, and hybrid mode. Hybrid mode tries Gemini first, then falls back to Pexels and finally deterministic placeholders.
 
 The image selection logic:
 
+- Builds a detailed Gemini image prompt from the brand profile, audience, tone, platform, caption, CTA, and target aspect ratio.
+- Saves generated images into `generated_assets/` and serves them through `/generated-assets`.
 - Interprets **brand name** and **industry** (e.g., Apple ≠ apples; Tesla = electric vehicles; Starbucks = coffee and cafes; Neurobots = robotics competitions).  
 - Looks at **products/services** (e.g., “Apple Watch”, “AirPods”, “handcrafted drinks”, “robotics championship”).  
 - Builds smart Pexels queries such as:
@@ -134,9 +136,9 @@ The image selection logic:
   - `"robotics team tech competition"` for Neurobots  
   - `"electric sedan"` for Tesla Model 3  
 - Adapts queries to platform style (lifestyle‑oriented for Instagram, professional scenes for LinkedIn, dynamic scenes for X).  
-- Calls the Pexels search endpoint and selects a suitable result, using the large‑size URL.
+- Calls the Pexels search endpoint and selects a suitable result when stock mode or fallback is used.
 
-If Pexels returns no results or the API fails, the system falls back to a deterministic placeholder image service using seeded randomness to maintain visual variety across posts while remaining predictable.
+If Gemini, Pexels, or both are unavailable, the system falls back to a deterministic placeholder image service using seeded randomness to maintain visual variety across posts while remaining predictable.
 
 ***
 
@@ -178,7 +180,7 @@ Post Generation (LLM)
   ↓  
 Heuristic Engagement Scoring  
   ↓  
-Context‑Aware Image Search (Pexels) + Fallbacks  
+Campaign Visual Generation (Gemini/Pexels) + Fallbacks  
   ↓  
 Assembled Content Pack (profile + posts + scores + image URLs)  
   ↓  
@@ -232,7 +234,8 @@ Generate brand profile, posts, engagement scores, and image URLs for a given web
 ```json
 {
   "url": "https://www.tesla.com",
-  "tone_preset": "auto"
+  "tonePreset": "auto",
+  "imageProvider": "hybrid"
 }
 ```
 
@@ -259,7 +262,9 @@ Generate brand profile, posts, engagement scores, and image URLs for a given web
       "hashtags": ["#Tesla", "#ElectricVehicle"],
       "engagement_score": 82,
       "engagement_score_label": "High",
-      "image_url": "https://images.pexels.com/photos/..."
+      "image_url": "http://localhost:8000/generated-assets/tesla-instagram-1.png",
+      "image_provider": "gemini:gemini-2.5-flash-image",
+      "image_prompt": "Create a polished campaign image..."
     },
     {
       "platform": "LinkedIn",
@@ -290,7 +295,11 @@ pip install -r requirements.txt
 
 # .env
 # GROQ_API_KEY=your_llm_key
+# GEMINI_API_KEY=your_gemini_key
+# IMAGE_PROVIDER=hybrid
+# GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 # PEXELS_API_KEY=your_pexels_key
+# PUBLIC_API_BASE_URL=http://localhost:8000
 
 uvicorn app.main:app --reload
 ```
@@ -302,10 +311,10 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm start   # or npm run dev
+npm run dev
 ```
 
-- UI: `http://localhost:3000`
+- UI: `http://localhost:5173`
 
 ***
 
@@ -317,7 +326,7 @@ npm start   # or npm run dev
 | Web Scraping     | HTTP client + HTML parser for lightweight text and color extraction                    |
 | LLM Integration  | Hosted LLM via cloud API (brand profiling & post generation)                           |
 | Analytics        | Custom Python heuristics for engagement scoring and labels                             |
-| Image Catalog    | Pexels API for brand‑ and product‑aware stock images, plus deterministic fallbacks     |
+| Campaign Images  | Gemini/Nano Banana image generation, Pexels stock images, deterministic fallbacks      |
 | Frontend         | React, Tailwind CSS, browser Clipboard & fetch capabilities                            |
 | Dev & Tooling    | Virtualenv, environment variables for keys, Uvicorn for local API server              |
 

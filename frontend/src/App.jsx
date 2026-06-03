@@ -29,19 +29,20 @@ function App() {
   const [campaignHistory, setCampaignHistory] = useState(readHistory);
   const [copiedAll, setCopiedAll] = useState(false);
 
-  const handleSubmit = async (url, tonePreset, fallbackText) => {
+  const handleSubmit = async (url, tonePreset, fallbackText, imageProvider) => {
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const data = await analyzeWebsite(url, tonePreset, fallbackText);
+      const data = await analyzeWebsite(url, tonePreset, fallbackText, imageProvider);
       const campaign = {
         id: `${Date.now()}`,
         createdAt: new Date().toISOString(),
         url,
         tonePreset,
         fallbackText,
+        imageProvider,
         data,
       };
       const nextHistory = [campaign, ...campaignHistory.filter((item) => item.url !== url)];
@@ -140,7 +141,7 @@ function App() {
               </div>
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <p className="text-xs text-gray-500 font-bold uppercase">Images</p>
-                <p className="text-lg font-black">Pexels</p>
+                <p className="text-lg font-black">AI + stock</p>
               </div>
             </div>
           </div>
