@@ -7,6 +7,7 @@ import {
   FaHashtag,
   FaInstagram,
   FaLinkedin,
+  FaMagic,
   FaRegClock,
   FaTwitter,
 } from 'react-icons/fa';
@@ -180,6 +181,16 @@ const PostCard = ({ post, scheduleSlot }) => {
               <FaExternalLinkAlt />
               Image
             </a>
+          )}
+
+          {post.image_prompt && (
+            <button
+              onClick={() => copyText('prompt', post.image_prompt)}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-950 text-sm font-bold px-2 py-2"
+            >
+              {copied === 'prompt' ? <FaCheck /> : <FaMagic />}
+              {copied === 'prompt' ? 'Copied' : 'Prompt'}
+            </button>
           )}
         </div>
       </div>
