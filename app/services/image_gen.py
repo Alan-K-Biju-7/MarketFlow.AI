@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, TypedDict
 
 import requests
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 class ImageResult(TypedDict, total=False):
@@ -62,7 +66,7 @@ class GeminiImageGenerator:
 
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+        self.model = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
         self.asset_dir = Path(os.getenv("GENERATED_ASSET_DIR", "generated_assets"))
         self.asset_dir.mkdir(parents=True, exist_ok=True)
         self.session = requests.Session()
@@ -119,14 +123,8 @@ class GeminiImageGenerator:
 
         brand_name = getattr(brand_profile, "brand_name", "brand")
         prompt = self.build_prompt(brand_profile, post, platform)
-        spec = PLATFORM_SPECS.get(platform, PLATFORM_SPECS["instagram"])
-
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "responseModalities": ["Image"],
-                "responseFormat": {"image": {"aspectRatio": spec["aspect_ratio"]}},
-            },
+            "contents": [{"parts": [{"text": prompt}]}]
         }
 
         try:
@@ -136,6 +134,9 @@ class GeminiImageGenerator:
                 json=payload,
                 timeout=60,
             )
+            if not response.ok:
+                print(f"Gemini image generation failed: {response.status_code} {response.text[:400]}")
+                return None
             response.raise_for_status()
             inline_image = self.extract_inline_image(response.json())
             if not inline_image:

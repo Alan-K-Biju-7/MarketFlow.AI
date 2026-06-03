@@ -60,7 +60,7 @@ The Docker frontend is served on `http://localhost:8080`.
 
 - `GROQ_API_KEY`: Required for brand profile and post generation.
 - `GEMINI_API_KEY`: Optional. Enables Gemini/Nano Banana campaign image generation.
-- `GEMINI_IMAGE_MODEL`: Optional. Defaults to `gemini-2.5-flash-image`; can be changed to another supported Gemini image model.
+- `GEMINI_IMAGE_MODEL`: Optional. Defaults to `gemini-3.1-flash-image`; can be changed to another supported Gemini image model.
 - `IMAGE_PROVIDER`: Optional. Use `hybrid`, `gemini`, or `pexels`; the frontend can also choose this per campaign.
 - `PEXELS_API_KEY`: Optional. Used for stock images and as the hybrid fallback.
 - `PUBLIC_API_BASE_URL`: Optional. Public backend URL used when serving generated image files.

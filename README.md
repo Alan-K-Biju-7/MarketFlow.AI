@@ -296,7 +296,7 @@ Generate brand profile, campaign strategy, posts, engagement labels, image URLs,
       "engagement_score": 82,
       "engagement_score_label": "High",
       "image_url": "http://localhost:8000/generated-assets/tesla-instagram-1.png",
-      "image_provider": "gemini:gemini-2.5-flash-image",
+      "image_provider": "gemini:gemini-3.1-flash-image",
       "image_prompt": "Create a polished campaign image..."
     },
     {
@@ -330,7 +330,7 @@ pip install -r requirements.txt
 # GROQ_API_KEY=your_llm_key
 # GEMINI_API_KEY=your_gemini_key
 # IMAGE_PROVIDER=hybrid
-# GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
+# GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
 # PEXELS_API_KEY=your_pexels_key
 # PUBLIC_API_BASE_URL=http://localhost:8000
 
