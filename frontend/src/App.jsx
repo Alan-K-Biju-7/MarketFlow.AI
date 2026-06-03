@@ -6,6 +6,7 @@ import PostCard from './components/PostCard';
 import LoadingSpinner from './components/LoadingSpinner';
 import CampaignScorecard from './components/CampaignScorecard';
 import AutomationHub from './components/AutomationHub';
+import StrategyRoom from './components/StrategyRoom';
 import {
   analyzeWebsite,
   downloadCSV,
@@ -55,8 +56,9 @@ const writeHistory = (items) => {
 
 const viewTabs = [
   { id: 'command', label: 'Command Center', icon: <FaBolt /> },
+  { id: 'strategy', label: 'Strategy', icon: <FaBriefcase /> },
   { id: 'posts', label: 'Posts', icon: <FaLayerGroup /> },
-  { id: 'brand', label: 'Brand System', icon: <FaBriefcase /> },
+  { id: 'brand', label: 'Brand System', icon: <FaRegFileAlt /> },
 ];
 
 const emptyHighlights = [
@@ -356,6 +358,7 @@ function App() {
 
                 {activeView === 'command' && (
                   <div className="space-y-5">
+                    <StrategyRoom plan={result.campaign_plan} />
                     <CampaignScorecard health={health} result={result} platformCounts={platformCounts} />
                     <AutomationHub
                       campaignId={activeCampaign?.id}
@@ -372,6 +375,8 @@ function App() {
                     )}
                   </div>
                 )}
+
+                {activeView === 'strategy' && <StrategyRoom plan={result.campaign_plan} />}
 
                 {activeView === 'posts' && (
                   <div className="space-y-5">

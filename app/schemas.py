@@ -55,6 +55,30 @@ class GeneratedPost(BaseModel):
     image_provider: Optional[str] = None
     image_prompt: Optional[str] = None
 
+
+class FunnelStage(BaseModel):
+    stage: str
+    objective: str
+    message: str
+    asset: str
+    automation_trigger: str
+
+
+class CampaignPlan(BaseModel):
+    campaign_name: str
+    primary_angle: str
+    positioning_statement: str
+    audience_insight: str
+    content_pillars: List[str]
+    offer_hooks: List[str]
+    funnel_stages: List[FunnelStage]
+    kpis: List[str]
+    experiments: List[str]
+    automation_playbook: List[str]
+    risk_checks: List[str]
+
+
 class AnalyzeResponse(BaseModel):
     brand_profile: BrandProfile
     posts: List[GeneratedPost]
+    campaign_plan: CampaignPlan

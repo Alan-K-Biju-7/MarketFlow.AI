@@ -239,7 +239,7 @@ React UI / External Consumers
 
 ### `POST /analyze`
 
-Generate brand profile, posts, engagement scores, and image URLs for a given website.
+Generate brand profile, campaign strategy, posts, engagement labels, image URLs, and automation guidance for a given website.
 
 **Request**
 
@@ -266,6 +266,27 @@ Generate brand profile, posts, engagement scores, and image URLs for a given web
       { "name": "Red", "hex": "#e31937" },
       { "name": "Black", "hex": "#000000" }
     ]
+  },
+  "campaign_plan": {
+    "campaign_name": "Tesla Growth Sprint",
+    "primary_angle": "Electric vehicles for sustainability-focused consumers",
+    "positioning_statement": "...",
+    "audience_insight": "...",
+    "content_pillars": ["Problem framing", "Proof and credibility"],
+    "offer_hooks": ["Show the before-and-after value"],
+    "funnel_stages": [
+      {
+        "stage": "Awareness",
+        "objective": "...",
+        "message": "...",
+        "asset": "...",
+        "automation_trigger": "..."
+      }
+    ],
+    "kpis": ["Post saves and shares by platform"],
+    "experiments": ["Test emotional hook vs. practical hook"],
+    "automation_playbook": ["Attach UTM links before publishing"],
+    "risk_checks": ["Confirm every claim is supported"]
   },
   "posts": [
     {

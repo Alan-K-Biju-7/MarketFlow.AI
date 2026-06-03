@@ -127,16 +127,17 @@ export const buildAutomationTasks = (result, schedule = [], preferences = {}) =>
   if (!result?.brand_profile) return [];
 
   const brand = result.brand_profile.brand_name;
+  const plan = result.campaign_plan;
   const firstSlot = schedule[0]?.slot || 'next publishing window';
   const goal = goalLabels[preferences.campaignGoal] || 'Campaign growth';
 
-  return [
+  const coreTasks = [
     {
       id: 'approve-positioning',
       title: 'Approve positioning',
       owner: 'Brand',
       due: 'Today',
-      detail: `${brand} message, tone, audience, and offer are ready for sign-off.`,
+      detail: plan?.positioning_statement || `${brand} message, tone, audience, and offer are ready for sign-off.`,
     },
     {
       id: 'lock-goal',
@@ -174,6 +175,16 @@ export const buildAutomationTasks = (result, schedule = [], preferences = {}) =>
       detail: 'Compare hooks, saves, clicks, comments, and CTA conversion by platform.',
     },
   ];
+
+  const playbookTasks = (plan?.automation_playbook || []).slice(0, 3).map((item, index) => ({
+    id: `playbook-${index}`,
+    title: `Playbook step ${index + 1}`,
+    owner: 'Ops',
+    due: index === 0 ? 'Before launch' : 'This sprint',
+    detail: item,
+  }));
+
+  return [...coreTasks, ...playbookTasks];
 };
 
 const cleanCaption = (caption = '') =>
@@ -226,12 +237,25 @@ export const buildApprovalBrief = (result, schedule, tasks, variants, utmLinks) 
   if (!result) return '';
 
   const brand = result.brand_profile;
+  const plan = result.campaign_plan;
   const lines = [
     `${brand.brand_name} Campaign Approval Brief`,
     '',
     `Tone: ${brand.tone}`,
     `Audience: ${brand.target_audience.join(', ')}`,
     `Offer: ${brand.products_services.join(', ')}`,
+    '',
+    plan ? 'Strategy' : '',
+    plan ? `Campaign: ${plan.campaign_name}` : '',
+    plan ? `Primary angle: ${plan.primary_angle}` : '',
+    plan ? `Positioning: ${plan.positioning_statement}` : '',
+    plan ? `Audience insight: ${plan.audience_insight}` : '',
+    '',
+    plan ? 'Content Pillars' : '',
+    ...(plan?.content_pillars || []).map((item) => `- ${item}`),
+    '',
+    plan ? 'KPIs' : '',
+    ...(plan?.kpis || []).map((item) => `- ${item}`),
     '',
     'Launch Queue',
     ...schedule.map((item) => `- ${item.slot} | ${item.platform}: ${item.caption}`),

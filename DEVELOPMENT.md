@@ -2,7 +2,7 @@
 
 ## Stack
 
-- Backend: FastAPI, Pydantic v2, Groq SDK, Gemini/Nano Banana image generation, Pexels API, pytest
+- Backend: FastAPI, Pydantic v2, Groq SDK, campaign strategy planner, Gemini/Nano Banana image generation, Pexels API, pytest
 - Frontend: Vite, React 18, Tailwind CSS, Vitest, Testing Library
 - Tooling: Docker Compose, GitHub Actions CI
 
@@ -74,3 +74,7 @@ The Docker frontend is served on `http://localhost:8080`.
 - `pexels`: Uses Pexels stock imagery only.
 
 Generated Gemini images are stored in `generated_assets/` and served from `/generated-assets`.
+
+## Campaign Strategy Layer
+
+The API returns a `campaign_plan` alongside `brand_profile` and `posts`. It includes positioning, audience insight, content pillars, funnel stages, KPIs, experiments, automation playbook steps, and risk checks. The frontend uses this for the Strategy Room, launch checklist, exports, and approval brief.

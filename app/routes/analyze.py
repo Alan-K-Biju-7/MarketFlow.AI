@@ -5,6 +5,7 @@ from app.schemas import AnalyzeRequest, AnalyzeResponse
 from app.services.scraper import fetch_website_text
 from app.services.brand_profile import generate_brand_profile
 from app.services.posts import generate_posts
+from app.services.campaign_plan import build_campaign_plan
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -29,8 +30,11 @@ async def analyze_website(request: AnalyzeRequest):
         
         # 3. Generate posts
         posts = generate_posts(brand_profile, request.tonePreset)
+
+        # 4. Build campaign strategy and automation plan
+        campaign_plan = build_campaign_plan(brand_profile, posts, request.tonePreset)
         
-        # 4. Generate images for each post
+        # 5. Generate images for each post
         from app.services.image_gen import generate_post_image
         
         for idx, post in enumerate(posts):
@@ -61,7 +65,8 @@ async def analyze_website(request: AnalyzeRequest):
         
         return AnalyzeResponse(
             brand_profile=brand_profile,
-            posts=posts
+            posts=posts,
+            campaign_plan=campaign_plan,
         )
         
     except Exception:

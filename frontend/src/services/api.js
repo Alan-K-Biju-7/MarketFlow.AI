@@ -77,6 +77,7 @@ export const downloadCSV = (data) => {
 
 export const downloadMarkdown = (data) => {
   const brandProfile = data.brand_profile;
+  const campaignPlan = data.campaign_plan;
   const posts = data.posts;
 
   const lines = [
@@ -93,6 +94,37 @@ export const downloadMarkdown = (data) => {
     `**Target Audience:** ${brandProfile.target_audience.join(', ')}`,
     '',
     `**Keywords:** ${brandProfile.keywords.join(', ')}`,
+    '',
+    campaignPlan ? `## Campaign Strategy` : '',
+    '',
+    campaignPlan ? `**Campaign:** ${campaignPlan.campaign_name}` : '',
+    '',
+    campaignPlan ? `**Primary Angle:** ${campaignPlan.primary_angle}` : '',
+    '',
+    campaignPlan ? `**Positioning:** ${campaignPlan.positioning_statement}` : '',
+    '',
+    campaignPlan ? `**Audience Insight:** ${campaignPlan.audience_insight}` : '',
+    '',
+    campaignPlan ? `### Content Pillars` : '',
+    '',
+    ...(campaignPlan?.content_pillars || []).map((item) => `- ${item}`),
+    '',
+    campaignPlan ? `### Funnel Map` : '',
+    '',
+    ...(campaignPlan?.funnel_stages || []).flatMap((stage) => [
+      `- **${stage.stage}:** ${stage.objective}`,
+      `  - Message: ${stage.message}`,
+      `  - Asset: ${stage.asset}`,
+      `  - Automation: ${stage.automation_trigger}`,
+    ]),
+    '',
+    campaignPlan ? `### KPIs` : '',
+    '',
+    ...(campaignPlan?.kpis || []).map((item) => `- ${item}`),
+    '',
+    campaignPlan ? `### Experiments` : '',
+    '',
+    ...(campaignPlan?.experiments || []).map((item) => `- ${item}`),
     '',
     `## Posts`,
     '',
