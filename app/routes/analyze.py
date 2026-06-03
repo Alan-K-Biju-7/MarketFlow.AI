@@ -17,6 +17,12 @@ async def analyze_website(request: AnalyzeRequest):
     try:
         # 1. Scrape website (also returns detected color hex codes)
         website_text, detected_colors = fetch_website_text(str(request.url), fallback_text=request.fallbackText)
+        if request.fallbackText:
+            website_text = (
+                f"{website_text}\n\n"
+                "User-provided brand context and positioning notes:\n"
+                f"{request.fallbackText}"
+            )
 
         # 2. Generate brand profile, pass detected colors to help the LLM name them
         brand_profile = generate_brand_profile(website_text, request.tonePreset, detected_colors=detected_colors)

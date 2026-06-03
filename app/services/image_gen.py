@@ -42,19 +42,36 @@ class PexelsImageGenerator:
         self,
         brand_name: str,
         products: List[str],
-        platform: str
+        platform: str,
+        post: Optional[Dict] = None
     ) -> str:
         """
         Build smart search query for Pexels
         """
         
         brand_lower = brand_name.lower()
+        post = post or {}
+        caption = str(post.get("caption", "")).lower()
         
         # Check for known brands
         for brand_key, queries in self.BRAND_QUERIES.items():
             if brand_key in brand_lower:
                 return queries[0]  # Return primary query
         
+        domain_queries = [
+            (["marketing", "social media", "campaign", "content", "brand"], "marketing strategy team"),
+            (["coffee", "cafe", "bakery", "restaurant"], "cafe coffee lifestyle"),
+            (["fitness", "gym", "wellness", "health"], "fitness lifestyle"),
+            (["fashion", "clothing", "apparel"], "fashion brand lifestyle"),
+            (["software", "saas", "technology", "ai", "automation"], "startup team technology"),
+            (["ngo", "nonprofit", "impact", "community"], "community support nonprofit"),
+            (["finance", "accounting", "investment"], "business finance planning"),
+        ]
+        haystack = " ".join([brand_lower, caption, " ".join(products)])
+        for keywords, query in domain_queries:
+            if any(keyword in haystack for keyword in keywords):
+                return query
+
         # Build from products
         if products:
             # Use first product + platform context
@@ -142,7 +159,7 @@ class PexelsImageGenerator:
                 print(f"     Products: {', '.join(products)}")
             
             # Build query
-            query = self.build_search_query(brand_name, products, platform)
+            query = self.build_search_query(brand_name, products, platform, post)
             print(f"     Search: '{query}'")
             
             # Search Pexels

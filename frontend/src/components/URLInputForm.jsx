@@ -41,12 +41,12 @@ const URLInputForm = ({ onSubmit, loading }) => {
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Brand Context
+            Brand Notes
           </label>
           <textarea
             value={fallbackText}
             onChange={(e) => setFallbackText(e.target.value)}
-            placeholder="Optional: add products, audience, differentiators, offers, or brand notes."
+            placeholder="Add the business type, products, audience, offer, location, tone, or anything the website may not explain clearly."
             className="w-full min-h-28 px-5 py-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-base resize-y"
             disabled={loading}
             maxLength={4000}
