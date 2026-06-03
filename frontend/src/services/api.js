@@ -73,3 +73,49 @@ export const downloadCSV = (data) => {
   a.click();
   URL.revokeObjectURL(url);
 };
+
+export const downloadMarkdown = (data) => {
+  const brandProfile = data.brand_profile;
+  const posts = data.posts;
+
+  const lines = [
+    `# ${brandProfile.brand_name} Campaign Pack`,
+    '',
+    `## Brand Profile`,
+    '',
+    `**Description:** ${brandProfile.description}`,
+    '',
+    `**Tone:** ${brandProfile.tone}`,
+    '',
+    `**Products & Services:** ${brandProfile.products_services.join(', ')}`,
+    '',
+    `**Target Audience:** ${brandProfile.target_audience.join(', ')}`,
+    '',
+    `**Keywords:** ${brandProfile.keywords.join(', ')}`,
+    '',
+    `## Posts`,
+    '',
+    ...posts.flatMap((post, index) => [
+      `### ${index + 1}. ${post.platform}`,
+      '',
+      post.caption,
+      '',
+      `**Hashtags:** ${post.hashtags.join(' ')}`,
+      '',
+      `**CTA:** ${post.cta}`,
+      '',
+      `**Engagement:** ${post.engagement_score_label}`,
+      '',
+      post.image_url ? `**Image:** ${post.image_url}` : '',
+      '',
+    ]),
+  ];
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${brandProfile.brand_name}_campaign_pack.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+};

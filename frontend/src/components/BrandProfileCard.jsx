@@ -66,35 +66,51 @@ const BrandProfileCard = ({ brandProfile }) => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-white to-indigo-50 rounded-xl shadow-xl p-8 mb-10 border border-indigo-100">
-      <div className="flex items-center mb-6">
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-3 rounded-lg mr-4">
+    <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 border border-gray-200">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-6">
+        <div className="flex items-center">
+        <div className="bg-gray-950 p-3 rounded-lg mr-4">
           <FaBuilding className="text-white text-2xl" />
         </div>
         <div>
-          <h2 className="text-3xl font-bold text-gray-800">{brandProfile.brand_name}</h2>
-          <span className="inline-block mt-2 bg-indigo-100 text-indigo-800 text-sm font-semibold px-4 py-1 rounded-full">
+          <h2 className="text-3xl font-black text-gray-950">{brandProfile.brand_name}</h2>
+          <span className="inline-block mt-2 bg-teal-50 text-teal-800 text-sm font-bold px-4 py-1 rounded-full">
             {brandProfile.tone}
           </span>
         </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 min-w-full md:min-w-[320px]">
+          <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">Offers</p>
+            <p className="text-xl font-black">{brandProfile.products_services.length}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">Audiences</p>
+            <p className="text-xl font-black">{brandProfile.target_audience.length}</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+            <p className="text-xs font-bold text-gray-500 uppercase">Keywords</p>
+            <p className="text-xl font-black">{brandProfile.keywords.length}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="mb-6 p-4 bg-white rounded-lg border-l-4 border-indigo-600">
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border-l-4 border-teal-700">
         <div className="flex items-start">
-          <FaQuoteLeft className="text-indigo-400 text-xl mr-3 mt-1" />
-          <p className="text-gray-700 leading-relaxed">{brandProfile.description}</p>
+          <FaQuoteLeft className="text-teal-700 text-xl mr-3 mt-1" />
+          <p className="text-gray-700 leading-relaxed font-medium">{brandProfile.description}</p>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center mb-3">
-            <FaTag className="text-indigo-600 mr-2" />
-            <h3 className="font-bold text-gray-800">Products & Services</h3>
+            <FaTag className="text-teal-700 mr-2" />
+            <h3 className="font-black text-gray-950">Products & Services</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {brandProfile.products_services.map((item, index) => (
-              <span key={index} className="bg-white border border-indigo-200 text-gray-700 text-sm px-3 py-1 rounded-lg hover:bg-indigo-50 transition-colors">
+              <span key={index} className="bg-gray-50 border border-gray-200 text-gray-700 text-sm px-3 py-1 rounded-md font-medium">
                 {item}
               </span>
             ))}
@@ -103,12 +119,12 @@ const BrandProfileCard = ({ brandProfile }) => {
 
         <div>
           <div className="flex items-center mb-3">
-            <FaBullseye className="text-purple-600 mr-2" />
-            <h3 className="font-bold text-gray-800">Target Audience</h3>
+            <FaBullseye className="text-blue-700 mr-2" />
+            <h3 className="font-black text-gray-950">Target Audience</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {brandProfile.target_audience.map((audience, index) => (
-              <span key={index} className="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-lg font-medium">
+              <span key={index} className="bg-blue-50 text-blue-800 text-sm px-3 py-1 rounded-md font-bold">
                 {audience}
               </span>
             ))}
@@ -116,12 +132,12 @@ const BrandProfileCard = ({ brandProfile }) => {
         </div>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-indigo-200">
+      <div className="mt-6 pt-6 border-t border-gray-200">
         <div className="flex items-center mb-3">
-          <FaPalette className="text-pink-600 mr-2" />
-          <h3 className="font-bold text-gray-800">Brand Colors</h3>
+          <FaPalette className="text-teal-700 mr-2" />
+          <h3 className="font-black text-gray-950">Brand Colors</h3>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {brandProfile.colors.map((color, index) => {
             const { value, label } = parseColor(color);
             return (
